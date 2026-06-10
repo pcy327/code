@@ -191,6 +191,18 @@ export default function EditorPanel({ onHeadingsChange }) {
 
   const handleMarkdownChange = useCallback((md) => {
     setLocalContent(md);
+    // Extract headings for outline panel
+    const headings = [];
+    if (md) {
+      const lines = md.split('\n');
+      let idx = 0;
+      for (const line of lines) {
+        const m = line.match(/^(#{1,3})\s+(.+)$/);
+        if (m) headings.push({ id: `h-${++idx}`, level: m[1].length, text: m[2].trim() });
+      }
+    }
+    onHeadingsChange?.(headings);
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: md } });
@@ -199,7 +211,7 @@ export default function EditorPanel({ onHeadingsChange }) {
         lastSavedRef.current = md;
       }
     }, 800);
-  }, [dispatch, currentNote?.id]);
+  }, [dispatch, currentNote?.id, onHeadingsChange]);
 
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
