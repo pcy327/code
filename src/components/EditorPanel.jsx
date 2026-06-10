@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { Editor } from '@milkdown/kit/core';
+import { Editor, rootCtx } from '@milkdown/kit/core';
 import { nord } from '@milkdown/theme-nord';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
@@ -24,6 +24,9 @@ function MilkdownInner({ content, onContentChange }) {
   // Init editor only once
   useEditor((root) => {
     return Editor.make()
+      .config((ctx) => {
+        ctx.set(rootCtx, root);
+      })
       .config(nord)
       .use(commonmark)
       .use(gfm)
