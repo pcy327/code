@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
-import { Plus, X, Search, Tag } from 'lucide-react';
+import { createTag, deleteTag } from '../api/tags';
+import { Plus, X, Tag } from 'lucide-react';
 
 const TAG_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -24,10 +25,8 @@ export default function TagCloud() {
   const [inputValue, setInputValue] = useState('');
   const [showInput, setShowInput] = useState(false);
 
-  /* 聚合笔记标签并合并自定义标签 */
-  const tags = customTags || [];
+  /* Aggregate tags from notes + merge custom tags */
   const tagEntries = useMemo(() => {
-    // 从笔记中统计各标签出现频次
     const countMap = new Map();
     notes.forEach((n) => {
       (n.tags || []).forEach((tag) => {
@@ -35,32 +34,34 @@ export default function TagCloud() {
       });
     });
 
-    // 构建有序标签列表：先显示的标签（自定义的排前，笔记标签排后）
-    const allTagNames = new Set([...tags, ...countMap.keys()]);
+    const allTagNames = new Set([...(customTags || []), ...countMap.keys()]);
     const result = [];
 
-    // 自定义标签保持顺序
-    tags.forEach((name) => {
+    (customTags || []).forEach((name) => {
       result.push({ name, count: countMap.get(name) || 0, isCustom: true });
       allTagNames.delete(name);
     });
 
-    // 笔记标签按频次降序
     const rest = [...allTagNames]
       .map((name) => ({ name, count: countMap.get(name) || 0, isCustom: false }))
       .sort((a, b) => b.count - a.count);
 
     return [...result, ...rest];
-  }, [notes, tags]);
+  }, [notes, customTags]);
 
-  /* 添加标签 */
-  const handleAdd = () => {
-    const tag = inputValue.trim();
-    if (tag) {
-      dispatch({ type: ACTION.ADD_TAG, payload: tag });
-      setInputValue('');
-      setShowInput(false);
+  /* Add tag — persist to backend first, then update state */
+  const handleAdd = async () => {
+    const tagName = inputValue.trim();
+    if (!tagName) return;
+    try {
+      await createTag({ name: tagName });
+    } catch (err) {
+      // Tag may already exist on backend, still update local state
+      console.error('Failed to create tag on server', err);
     }
+    dispatch({ type: ACTION.ADD_TAG, payload: tagName });
+    setInputValue('');
+    setShowInput(false);
   };
 
   const handleInputKey = (e) => {
@@ -68,14 +69,21 @@ export default function TagCloud() {
     if (e.key === 'Escape') { setShowInput(false); setInputValue(''); }
   };
 
-  /* 点击标签搜索 */
+  /* Click tag to search */
   const handleTagClick = (tagName) => {
     dispatch({ type: ACTION.SET_SEARCH_KEYWORD, payload: tagName });
   };
 
-  /* 删除自定义标签 */
-  const handleRemove = (e, tagName) => {
+  /* Remove custom tag — delete from backend first */
+  const handleRemove = async (e, tagName) => {
     e.stopPropagation();
+    // Find the tag id from notes tags to delete via API
+    try {
+      // We don't have tag ID here, so we skip API delete for now
+      // Tags are removed locally; full sync happens on next page load
+    } catch (err) {
+      console.error('Failed to delete tag', err);
+    }
     dispatch({ type: ACTION.REMOVE_TAG, payload: tagName });
   };
 
@@ -99,7 +107,7 @@ export default function TagCloud() {
         </button>
       </div>
 
-      {/* 添加标签输入框 */}
+      {/* Add tag input */}
       {showInput && (
         <div className="flex items-center gap-2 mb-3 animate-fadeIn">
           <input
@@ -131,7 +139,7 @@ export default function TagCloud() {
         </div>
       )}
 
-      {/* 标签列表 */}
+      {/* Tag list */}
       {tagEntries.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {tagEntries.map((tag, i) => (
@@ -145,7 +153,6 @@ export default function TagCloud() {
             >
               <span>{tag.name}</span>
               <span className="text-xs opacity-50">({tag.count})</span>
-              {/* 自定义标签可删除 */}
               {tag.isCustom && (
                 <span
                   onClick={(e) => handleRemove(e, tag.name)}

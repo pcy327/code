@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://192.168.133.126:5432/ai_note
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+  ai:
+    openai:
+      api-key: sk-538dbf8fd4f3430493d6016a6879bd8a
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-chat
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: true
+      logic-not-delete-value: false
+
+jwt:
+  secret: ${JWT_SECRET:ai-note-default-secret-key-change-in-production}
+  expiration: 604800000
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+logging:
+  level:
+    com.ainote: debug
