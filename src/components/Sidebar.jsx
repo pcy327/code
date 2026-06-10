@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
-import { updateNote } from '../api/notes';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { updateNote, deleteNote } from '../api/notes';
+import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
 
 function contentSnippet(content, maxLen = 60) {
   if (!content) return '暂无内容';
@@ -62,6 +62,20 @@ export default function Sidebar() {
     navigate(`/workspace/${note.id}`);
   };
 
+  const handleDelete = async (e, noteId) => {
+    e.stopPropagation();
+    try {
+      await deleteNote(noteId);
+      dispatch({ type: ACTION.DELETE_NOTE, payload: noteId });
+      // If deleting the currently open note, navigate back
+      if (noteId === currentNote?.id) {
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Failed to delete note', err);
+    }
+  };
+
   const handleReset = () => {
     dispatch({ type: ACTION.RESET_DEFAULTS });
     navigate('/');
@@ -89,26 +103,41 @@ export default function Sidebar() {
             const isActive = note.id === noteId;
             const snippet = contentSnippet(note.content || note.summary);
             return (
-              <button
+              <div
                 key={note.id}
-                onClick={() => handleSwitchNote(note)}
-                className={`w-full text-left relative transition-all duration-150 cursor-pointer
+                className={`group/item w-full text-left relative transition-all duration-150 cursor-pointer
                   ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'} rounded-lg`}
               >
-                {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-500 rounded-full" />
-                )}
-                <div className="pl-3 pr-3 py-2.5">
-                  <p className={`text-sm leading-snug line-clamp-1 ${
-                    isActive ? 'font-semibold text-blue-700' : 'font-medium text-gray-800'
-                  }`}>
-                    {note.title || '未命名笔记'}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 leading-relaxed">
-                    {snippet}
-                  </p>
-                </div>
-              </button>
+                <button
+                  onClick={() => handleSwitchNote(note)}
+                  className="w-full text-left block"
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-500 rounded-full" />
+                  )}
+                  <div className="pl-3 pr-8 py-2.5">
+                    <p className={`text-sm leading-snug line-clamp-1 ${
+                      isActive ? 'font-semibold text-blue-700' : 'font-medium text-gray-800'
+                    }`}>
+                      {note.title || '未命名笔记'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 leading-relaxed">
+                      {snippet}
+                    </p>
+                  </div>
+                </button>
+                {/* Delete button — visible on hover */}
+                <button
+                  onClick={(e) => handleDelete(e, note.id)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded
+                             opacity-0 group-hover/item:opacity-100
+                             text-gray-300 hover:text-red-500 hover:bg-red-50
+                             transition-all duration-150 cursor-pointer"
+                  title="删除笔记"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             );
           })}
         </div>
