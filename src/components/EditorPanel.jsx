@@ -1,86 +1,115 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import MDEditor from '@uiw/react-md-editor';
+import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
+import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core';
+import { commonmark } from '@milkdown/kit/preset/commonmark';
+import { gfm } from '@milkdown/kit/preset/gfm';
+import { history } from '@milkdown/kit/plugin/history';
+import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
+import { nord } from '@milkdown/theme-nord';
+import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
+import '@milkdown/theme-nord/style.css';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
 import { generateSummary, suggestTags, optimizeMarkdown } from '../api/ai';
 import { updateNote } from '../api/notes';
 import { FileText } from 'lucide-react';
 
-function extractHeadingsFromMarkdown(md) {
-  if (!md) return [];
-  const lines = md.split('\n');
-  const headings = [];
-  let idx = 0;
-  for (const line of lines) {
-    const m = line.match(/^(#{1,3})\s+(.+)$/);
-    if (m) {
-      headings.push({ id: `h-${++idx}`, level: m[1].length, text: m[2].trim() });
+/* ===================================================================
+ * Milkdown inner editor
+ * =================================================================== */
+function MilkdownEditor({ initialContent, onMarkdownChange }) {
+  const [loading, get] = useInstance();
+  const loadedRef = useRef(false);
+
+  useEditor((root) => {
+    return Editor.make()
+      .config((ctx) => {
+        ctx.set(rootCtx, root);
+        ctx.set(defaultValueCtx, initialContent || '');
+      })
+      .config(nord)
+      .use(commonmark)
+      .use(gfm)
+      .use(history)
+      .use(listener)
+      .config((ctx) => {
+        ctx.get(listenerCtx).markdownUpdated((_, md) => {
+          onMarkdownChange(md);
+        });
+      });
+  }, []);
+
+  /* Load content when initialContent changes (note switch) */
+  useEffect(() => {
+    if (loading) return;
+    const editor = get();
+    if (!editor) return;
+    const current = editor.action(getMarkdown());
+    const incoming = initialContent || '';
+    if (incoming !== current) {
+      editor.action(replaceAll(incoming));
     }
-  }
-  return headings;
+    loadedRef.current = true;
+  }, [initialContent, loading]);
+
+  return <Milkdown />;
 }
 
+/* ===================================================================
+ * EditorPanel — parent
+ * =================================================================== */
 export default function EditorPanel({ onHeadingsChange }) {
   const { currentNote } = useNoteState();
   const dispatch = useNoteDispatch();
   const debounceRef = useRef(null);
   const titleDebounceRef = useRef(null);
+  const lastSavedRef = useRef('');
 
   const [localContent, setLocalContent] = useState('');
+  const [currentId, setCurrentId] = useState(null);
   const [aiResult, setAiResult] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  /* Sync when switching notes */
+  /* When switching notes, reset content */
   useEffect(() => {
-    setLocalContent(currentNote?.content || '');
-    if (currentNote) {
-      onHeadingsChange?.(extractHeadingsFromMarkdown(currentNote.content || ''));
+    if (currentNote?.id !== currentId) {
+      setCurrentId(currentNote?.id);
+      setLocalContent(currentNote?.content || '');
+      lastSavedRef.current = currentNote?.content || '';
     }
   }, [currentNote?.id]);
 
-  /* Content change — debounce save */
-  const handleChange = useCallback((value) => {
-    const text = value || '';
-    setLocalContent(text);
-    onHeadingsChange?.(extractHeadingsFromMarkdown(text));
+  /* Content change from Milkdown */
+  const handleMarkdownChange = useCallback((md) => {
+    setLocalContent(md);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: text } });
-      if (currentNote?.id) updateNote(currentNote.id, { content: text }).catch(() => {});
+      dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: md } });
+      if (currentNote?.id && md !== lastSavedRef.current) {
+        updateNote(currentNote.id, { content: md }).catch(() => {});
+        lastSavedRef.current = md;
+      }
     }, 800);
-  }, [dispatch, onHeadingsChange, currentNote?.id]);
+  }, [dispatch, currentNote?.id]);
 
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
   }, []);
 
-  /* ---- AI ---- */
-  const handleAISummary = async () => {
+  /* AI actions */
+  const handleAI = async (fn, type) => {
     setAiLoading(true); setAiResult(null);
     try {
-      const d = await generateSummary(localContent);
-      setAiResult({ type: 'summary', content: d.summary });
-    } catch (err) { setAiResult({ type: 'error', content: err.message }); }
-    setAiLoading(false);
-  };
-  const handleAITags = async () => {
-    setAiLoading(true); setAiResult(null);
-    try {
-      const d = await suggestTags(localContent);
-      setAiResult({ type: 'tags', content: d.tags || [] });
-    } catch (err) { setAiResult({ type: 'error', content: err.message }); }
-    setAiLoading(false);
-  };
-  const handleAIOptimize = async () => {
-    setAiLoading(true); setAiResult(null);
-    try {
-      const d = await optimizeMarkdown(localContent);
-      setLocalContent(d.content);
-      dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: d.content } });
-      if (currentNote?.id) updateNote(currentNote.id, { content: d.content }).catch(() => {});
-      setAiResult({ type: 'text', content: '排版优化完成！' });
-    } catch (err) { setAiResult({ type: 'error', content: err.message }); }
+      const d = await fn(localContent);
+      if (type === 'optimize' && d.content) {
+        setLocalContent(d.content);
+        dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: d.content } });
+        if (currentNote?.id) updateNote(currentNote.id, { content: d.content }).catch(() => {});
+        lastSavedRef.current = d.content;
+      }
+      setAiResult({ type, data: d.summary || d.tags || d.content || '完成' });
+    } catch (err) { setAiResult({ type: 'error', data: err.message }); }
     setAiLoading(false);
   };
 
@@ -98,7 +127,7 @@ export default function EditorPanel({ onHeadingsChange }) {
   return (
     <div className="flex-1 flex flex-col bg-white h-full overflow-hidden">
       {/* Title */}
-      <div className="shrink-0 pt-6 pb-2 px-12">
+      <div className="shrink-0 pt-6 pb-2" style={{ padding: '24px 48px 8px' }}>
         <input
           type="text"
           value={currentNote.title || ''}
@@ -117,57 +146,49 @@ export default function EditorPanel({ onHeadingsChange }) {
         />
       </div>
 
-      {/* Editor with toolbar */}
-      <div className="flex-1 min-h-0 relative" data-color-mode="light">
-        <MDEditor
-          value={localContent}
-          onChange={handleChange}
-          preview="live"
-          height="100%"
-          visibleDragbar={false}
-          className="!bg-transparent !border-none !shadow-none"
-        />
-
-        {/* AI buttons — top-right of toolbar */}
-        <div className="ai-toolbar-actions">
-          <button onClick={handleAISummary} disabled={aiLoading || !localContent}
-            className="ai-toolbar-btn ai-btn-purple">
-            <FileText className="w-3.5 h-3.5" /> 摘要
-          </button>
-          <button onClick={handleAITags} disabled={aiLoading || !localContent}
-            className="ai-toolbar-btn ai-btn-emerald">
-            <FileText className="w-3.5 h-3.5" /> 标签
-          </button>
-          <button onClick={handleAIOptimize} disabled={aiLoading || !localContent}
-            className="ai-toolbar-btn ai-btn-amber">
-            ✨ 优化
-          </button>
-
-          {/* AI result popover */}
-          {aiResult && (
-            <div className="ai-popover">
-              <button onClick={() => setAiResult(null)} className="ai-popover-close">✕</button>
-              {aiLoading ? (
-                <div className="flex items-center justify-center gap-2 py-3">
-                  <div className="w-4 h-4 border-2 border-purple-200 border-t-purple-500 rounded-full animate-spin" />
-                  <span className="text-sm text-gray-500">处理中…</span>
-                </div>
-              ) : aiResult.type === 'summary' ? (
-                <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">📝 AI 摘要</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">{aiResult.content}</p></div>
-              ) : aiResult.type === 'tags' ? (
-                <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">🏷 智能标签</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {(aiResult.content || []).map((t) => (
-                    <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">{t}</span>
-                  ))}
-                </div></div>
-              ) : (
-                <p className="text-sm text-gray-700">{aiResult.content}</p>
-              )}
-            </div>
-          )}
+      {/* WYSIWYG Editor */}
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '0 48px 120px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <MilkdownProvider>
+            <MilkdownEditor
+              key={currentId}
+              initialContent={localContent}
+              onMarkdownChange={handleMarkdownChange}
+            />
+          </MilkdownProvider>
         </div>
+      </div>
+
+      {/* AI floating bar */}
+      <div className="ai-bar">
+        <button onClick={() => handleAI(generateSummary, 'summary')} disabled={aiLoading || !localContent}
+          className="ai-bar-btn">📝 摘要</button>
+        <button onClick={() => handleAI(suggestTags, 'tags')} disabled={aiLoading || !localContent}
+          className="ai-bar-btn">🏷 标签</button>
+        <button onClick={() => handleAI(optimizeMarkdown, 'optimize')} disabled={aiLoading || !localContent}
+          className="ai-bar-btn">✨ 优化</button>
+        {aiResult && (
+          <div className="ai-popover">
+            <button onClick={() => setAiResult(null)} className="ai-popover-close">✕</button>
+            {aiLoading ? (
+              <p className="text-sm text-gray-500">处理中...</p>
+            ) : aiResult.type === 'summary' ? (
+              <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">AI 摘要</h4>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiResult.data}</p></div>
+            ) : aiResult.type === 'tags' ? (
+              <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">智能标签</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {(aiResult.data || []).map((t) => (
+                  <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">{t}</span>
+                ))}
+              </div></div>
+            ) : aiResult.type === 'error' ? (
+              <p className="text-sm text-red-500">{aiResult.data}</p>
+            ) : (
+              <p className="text-sm text-gray-700">{aiResult.data}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

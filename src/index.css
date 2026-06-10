@@ -52,78 +52,115 @@
 }
 
 /* =============================================================
- * @uiw/react-md-editor — Clean visual style only
- *
- * Only override colors, fonts, borders. Do NOT touch layout
- * (width/height/position) — let the library handle that.
+ * Milkdown WYSIWYG Editor — single pane, white, centered
  * ============================================================= */
 
-[data-color-mode="light"] .w-md-editor {
-  --color-border: transparent !important;
-  --color-border-default: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  background: transparent !important;
+/* Milkdown editor area */
+.milkdown {
+  min-height: 60vh;
 }
 
-/* Toolbar */
-.w-md-editor-toolbar {
-  border: none !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-  background: transparent !important;
-  height: auto !important;
-  min-height: auto !important;
-}
-
-.w-md-editor-toolbar ul { gap: 1px !important; }
-
-.w-md-editor-toolbar li > button {
-  color: #94a3b8 !important;
-  border-radius: 6px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-}
-.w-md-editor-toolbar li > button svg { width: 16px !important; height: 16px !important; }
-.w-md-editor-toolbar li > button:hover { background: #f1f5f9 !important; color: #475569 !important; }
-.w-md-editor-toolbar li > button.active { background: #eff6ff !important; color: #3b82f6 !important; }
-
-.w-md-editor-content { background: transparent !important; }
-.w-md-editor-dragbar { display: none !important; }
-
-/* Source textarea — visual only */
-.w-md-editor-text-input {
-  font-family: 'Georgia', 'Noto Serif SC', serif !important;
+.milkdown .editor {
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
   font-size: 17px !important;
   line-height: 1.85 !important;
   color: #1e293b !important;
   caret-color: #3b82f6 !important;
-}
-.w-md-editor-text-pre > code {
-  font-family: 'Georgia', 'Noto Serif SC', serif !important;
-  font-size: 17px !important;
-  line-height: 1.85 !important;
-  color: #1e293b !important;
+  outline: none !important;
+  padding: 8px 0 120px;
 }
 
-/* Preview pane */
-.w-md-editor-preview { background: #fafbfc !important; box-shadow: none !important; }
-
-.wmde-markdown {
-  font-family: 'Georgia', 'Noto Serif SC', serif !important;
-  font-size: 17px !important;
-  line-height: 1.85 !important;
-  color: #334155 !important;
+.milkdown .ProseMirror {
+  outline: none !important;
+  min-height: 60vh;
 }
-.wmde-markdown h1 { font-size: 2em !important; font-weight: 700 !important; color: #0f172a !important; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
-.wmde-markdown h2 { font-size: 1.5em !important; font-weight: 600 !important; color: #1e293b !important; }
-.wmde-markdown h3 { font-size: 1.2em !important; font-weight: 600 !important; color: #334155 !important; }
-.wmde-markdown code { background: #f1f5f9 !important; color: #e11d48 !important; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace !important; }
-.wmde-markdown pre { background: #1e293b !important; border-radius: 10px !important; padding: 20px 24px; }
-.wmde-markdown pre code { background: transparent !important; color: #e2e8f0 !important; }
-.wmde-markdown blockquote { border-left: 4px solid #94a3b8 !important; background: #f8fafc; padding: 12px 20px; border-radius: 0 8px 8px 0; }
-.wmde-markdown table th { background: #f8fafc !important; font-weight: 600 !important; }
-.wmde-markdown table th, .wmde-markdown table td { border: 1px solid #e2e8f0 !important; padding: 8px 14px !important; }
-.wmde-markdown a { color: #3b82f6 !important; }
+
+.milkdown .ProseMirror p { margin-bottom: 0.8em; }
+.milkdown .ProseMirror h1 { font-size: 2em; font-weight: 700; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; margin: 1.5em 0 0.6em; }
+.milkdown .ProseMirror h2 { font-size: 1.5em; font-weight: 600; color: #1e293b; margin: 1.4em 0 0.5em; }
+.milkdown .ProseMirror h3 { font-size: 1.2em; font-weight: 600; color: #334155; margin: 1.2em 0 0.4em; }
+.milkdown .ProseMirror strong { font-weight: 700; }
+.milkdown .ProseMirror em { font-style: italic; }
+.milkdown .ProseMirror a { color: #3b82f6; text-decoration: none; }
+.milkdown .ProseMirror code { background: #f1f5f9; color: #e11d48; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+.milkdown .ProseMirror pre { background: #1e293b; border-radius: 10px; padding: 20px 24px; margin: 1em 0; }
+.milkdown .ProseMirror pre code { background: transparent; color: #e2e8f0; padding: 0; font-size: 14px; }
+.milkdown .ProseMirror blockquote { border-left: 4px solid #94a3b8; background: #f8fafc; padding: 12px 20px; color: #64748b; border-radius: 0 8px 8px 0; margin: 1em 0; }
+.milkdown .ProseMirror ul, .milkdown .ProseMirror ol { padding-left: 1.5em; }
+.milkdown .ProseMirror li { margin-bottom: 0.3em; }
+.milkdown .ProseMirror hr { border: none; border-top: 1px solid #e2e8f0; margin: 2em 0; }
+.milkdown .ProseMirror img { max-width: 100%; border-radius: 8px; }
+.milkdown .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.milkdown .ProseMirror table th { background: #f8fafc; font-weight: 600; }
+.milkdown .ProseMirror table th, .milkdown .ProseMirror table td { border: 1px solid #e2e8f0; padding: 8px 14px; }
+.milkdown .ProseMirror table tr:nth-child(2n) td { background: #fafbfc; }
+
+/* =============================================================
+ * AI floating bar — bottom-right fixed
+ * ============================================================= */
+.ai-bar {
+  position: fixed;
+  bottom: 24px;
+  right: calc(20% + 40px);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 30;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  padding: 3px 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+.ai-bar:hover { opacity: 1; }
+
+.ai-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.ai-bar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.ai-bar-btn:not(:disabled):hover { background: #f1f5f9; color: #334155; }
+
+.ai-popover {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  width: 300px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  z-index: 50;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.ai-popover-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  color: #cbd5e1;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 14px;
+}
+.ai-popover-close:hover { color: #64748b; }
 
 /* =============================================================
  * AI toolbar buttons — positioned top-right of MDEditor toolbar

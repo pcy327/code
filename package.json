@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@uiw/react-md-editor": "^4.1.1",
+    "@milkdown/kit": "^7.21.2",
+    "@milkdown/react": "^7.21.2",
+    "@milkdown/theme-nord": "^7.21.2",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
