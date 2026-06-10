@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core';
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/kit/core';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
@@ -94,6 +94,7 @@ function buildTooltip(editorRef) {
 function MilkdownEditor({ initialContent, onMarkdownChange }) {
   const [loading, get] = useInstance();
   const editorRef = useRef(null);
+  const composingRef = useRef(false);
 
   useEditor((root) => {
     const editor = Editor.make()
@@ -135,20 +136,41 @@ function MilkdownEditor({ initialContent, onMarkdownChange }) {
       ctx.set(tooltip.key, { view: tooltipPluginView });
     });
 
-    // --- Listener ---
+    // --- Listener (skip during IME composition) ---
     editor.config((ctx) => {
       ctx.get(listenerCtx).markdownUpdated((_, md) => {
-        onMarkdownChange(md);
+        if (!composingRef.current) {
+          onMarkdownChange(md);
+        }
       });
     });
 
     return editor;
   }, []);
 
-  /* Store editor ref for command execution */
+  /* Store editor ref + attach IME listeners */
   useEffect(() => {
     if (loading) return;
-    editorRef.current = get();
+    const editor = get();
+    editorRef.current = editor;
+    // Listen for IME composition to prevent garbled Chinese input
+    let dom;
+    try { dom = editor.ctx.get(editorViewCtx).dom; } catch (e) { /* ignore */ }
+    if (!dom) return;
+    const onCompositionStart = () => { composingRef.current = true; };
+    const onCompositionEnd = () => {
+      composingRef.current = false;
+      setTimeout(() => {
+        const md = editor.action(getMarkdown());
+        onMarkdownChange(md);
+      }, 50);
+    };
+    dom.addEventListener('compositionstart', onCompositionStart);
+    dom.addEventListener('compositionend', onCompositionEnd);
+    return () => {
+      dom.removeEventListener('compositionstart', onCompositionStart);
+      dom.removeEventListener('compositionend', onCompositionEnd);
+    };
   }, [loading]);
 
   /* Load content when switching notes */
