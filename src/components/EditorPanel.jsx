@@ -109,19 +109,19 @@ async function streamAIResponse(editorRef, onUpdate) {
 
         accumulated += data;
 
-        // Throttle: re-render every 100ms, wrapping AI content in blockquote bubble
+        // Throttle: re-render every 100ms with proper Markdown parsing
         const now = Date.now();
         if (now - lastRender > 100) {
           lastRender = now;
-          const bubble = '> 🤖 **AI 回答**\n>\n' + accumulated.split('\n').map(l => l ? '> ' + l : '>').join('\n');
-          editor.action(replaceAll((beforeContent ? beforeContent + '\n\n' : '') + bubble));
+          const prefix = beforeContent ? beforeContent + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
+          editor.action(replaceAll(prefix + accumulated));
         }
       }
     }
 
-    // Final render: wrap in blockquote bubble
-    const bubble = '> 🤖 **AI 回答**\n>\n' + accumulated.split('\n').map(l => l ? '> ' + l : '>').join('\n');
-    const fullMd = (beforeContent ? beforeContent + '\n\n' : '') + bubble;
+    // Final render with visual separator
+    const prefix = beforeContent ? beforeContent + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
+    const fullMd = prefix + accumulated;
     editor.action(replaceAll(fullMd));
     onUpdate(fullMd);
   } catch (err) {
