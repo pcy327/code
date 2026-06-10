@@ -52,252 +52,98 @@
 }
 
 /* =============================================================
- * Milkdown WYSIWYG Editor — Yuque-inspired clean typography
+ * @uiw/react-md-editor — Single pane, clean writing mode
  *
- * Single pane, WYSIWYG: type Markdown, see rendered output.
- * No split view. Clean, focused writing experience.
+ * Editor fills full width, no preview split by default.
+ * "显示预览" button toggles live preview when needed.
  * ============================================================= */
 
-/* --- Milkdown editor root --- */
-.milkdown {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 24px 0;
+[data-color-mode="light"] .w-md-editor {
+  --color-border: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  height: 100% !important;
 }
 
-/* --- Editor area --- */
-.milkdown .editor {
+/* Hide default toolbar (we use our own) */
+.w-md-editor-toolbar {
+  display: none !important;
+}
+
+.w-md-editor-content {
+  background: transparent !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* Source textarea — fill 100% width in edit mode */
+.w-md-editor-text {
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+}
+
+.w-md-editor-text-input {
   font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
   font-size: 17px !important;
   line-height: 1.85 !important;
   color: #1e293b !important;
   caret-color: #3b82f6 !important;
-  outline: none !important;
-  min-height: 60vh;
-}
-
-.milkdown .editor p {
-  margin-bottom: 0.8em;
-}
-
-/* --- Headings --- */
-.milkdown h1 {
-  font-size: 2em !important;
-  font-weight: 700 !important;
-  color: #0f172a !important;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.3em;
-  margin-top: 1.5em;
-  margin-bottom: 0.6em;
-}
-
-.milkdown h2 {
-  font-size: 1.5em !important;
-  font-weight: 600 !important;
-  color: #1e293b !important;
-  margin-top: 1.4em;
-  margin-bottom: 0.5em;
-}
-
-.milkdown h3 {
-  font-size: 1.2em !important;
-  font-weight: 600 !important;
-  color: #334155 !important;
-  margin-top: 1.2em;
-  margin-bottom: 0.4em;
-}
-
-/* --- Inline code --- */
-.milkdown code {
-  background: #f1f5f9 !important;
-  color: #e11d48 !important;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
-}
-
-/* --- Code blocks --- */
-.milkdown pre {
-  background: #1e293b !important;
-  border: none !important;
-  border-radius: 10px !important;
-  padding: 20px 24px;
-  margin: 1em 0;
-}
-
-.milkdown pre code {
   background: transparent !important;
-  color: #e2e8f0 !important;
-  padding: 0;
-  font-size: 14px;
+  padding: 0 48px 80px !important;
+  width: 100% !important;
 }
 
-/* --- Blockquote --- */
-.milkdown blockquote {
-  border-left: 4px solid #94a3b8 !important;
-  background: #f8fafc;
-  padding: 12px 20px;
-  color: #64748b;
-  border-radius: 0 8px 8px 0;
-  margin: 1em 0;
+.w-md-editor-text-pre {
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  background: transparent !important;
+  padding: 0 48px 80px !important;
 }
 
-/* --- Tables --- */
-.milkdown table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
+.w-md-editor-text-pre > code {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: #1e293b !important;
+  background: transparent !important;
 }
 
-.milkdown table th,
-.milkdown table td {
-  border: 1px solid #e2e8f0;
-  padding: 8px 14px;
+/* Preview pane — when toggled */
+.w-md-editor-preview {
+  background: #fafbfc !important;
+  box-shadow: none !important;
 }
 
-.milkdown table th {
-  background: #f8fafc;
-  font-weight: 600;
+.w-md-editor-input {
+  width: 50% !important;
 }
 
-.milkdown table tr:nth-child(2n) td {
-  background: #fafbfc;
+.w-md-editor-dragbar {
+  display: none !important;
 }
 
-/* --- Lists --- */
-.milkdown ul, .milkdown ol {
-  padding-left: 1.5em;
+/* Preview typography */
+.wmde-markdown {
+  color: #334155 !important;
+  background: transparent !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  padding: 0 48px 80px !important;
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
 }
 
-.milkdown li {
-  margin-bottom: 0.3em;
-}
-
-/* --- Links --- */
-.milkdown a {
-  color: #3b82f6;
-  text-decoration: none;
-}
-
-.milkdown a:hover {
-  text-decoration: underline;
-}
-
-/* --- Horizontal rule --- */
-.milkdown hr {
-  border: none;
-  border-top: 1px solid #e2e8f0;
-  margin: 2em 0;
-}
-
-/* --- Images --- */
-.milkdown img {
-  max-width: 100%;
-  border-radius: 8px;
-  margin: 1em 0;
-}
-
-/* --- Bold/Italic --- */
-.milkdown strong {
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.milkdown em {
-  font-style: italic;
-}
-
-/* --- ProseMirror selection --- */
-.milkdown .ProseMirror {
-  outline: none !important;
-  min-height: 60vh;
-}
-
-.milkdown .ProseMirror p {
-  margin-bottom: 0.8em;
-}
-
-/* =============================================================
- * AI floating action bar — bottom-right
- * ============================================================= */
-.ai-bar {
-  position: fixed;
-  bottom: 24px;
-  right: 280px; /* offset from outline panel */
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  z-index: 30;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  padding: 3px 4px;
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
-}
-.ai-bar:hover {
-  opacity: 1;
-}
-
-.ai-bar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.15s ease;
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.ai-bar-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.ai-bar-btn:not(:disabled):hover {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.ai-bar-btn:nth-child(1):not(:disabled):hover { color: #7c3aed; background: #f5f3ff; }
-.ai-bar-btn:nth-child(2):not(:disabled):hover { color: #059669; background: #ecfdf5; }
-.ai-bar-btn:nth-child(3):not(:disabled):hover { color: #d97706; background: #fffbeb; }
-
-.ai-popover {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 8px;
-  width: 300px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  z-index: 50;
-  padding: 16px;
-  animation: fadeIn 0.2s ease-out;
-}
-
-.ai-popover-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 6px;
-  color: #cbd5e1;
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-size: 14px;
-  line-height: 1;
-}
-.ai-popover-close:hover {
-  color: #64748b;
-}
+.wmde-markdown h1 { font-size: 2em !important; font-weight: 700 !important; color: #0f172a !important; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
+.wmde-markdown h2 { font-size: 1.5em !important; font-weight: 600 !important; color: #1e293b !important; }
+.wmde-markdown h3 { font-size: 1.2em !important; font-weight: 600 !important; color: #334155 !important; }
+.wmde-markdown code { background: #f1f5f9 !important; color: #e11d48 !important; padding: 2px 6px; border-radius: 4px; }
+.wmde-markdown pre { background: #1e293b !important; border-radius: 10px !important; padding: 20px 24px; }
+.wmde-markdown pre code { background: transparent !important; color: #e2e8f0 !important; }
+.wmde-markdown blockquote { border-left: 4px solid #94a3b8 !important; background: #f8fafc; padding: 12px 20px; border-radius: 0 8px 8px 0; }
+.wmde-markdown table th { background: #f8fafc !important; font-weight: 600 !important; }
+.wmde-markdown table th, .wmde-markdown table td { border: 1px solid #e2e8f0 !important; padding: 8px 14px !important; }
+.wmde-markdown a { color: #3b82f6 !important; }
