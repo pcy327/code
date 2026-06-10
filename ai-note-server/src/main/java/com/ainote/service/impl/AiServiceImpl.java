@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.Arrays;
 import java.util.List;
@@ -135,6 +136,29 @@ public class AiServiceImpl implements AiService {
                 .filter(s -> !s.isEmpty())
                 .limit(5)
                 .toList();
+    }
+
+    @Override
+    public void streamChat(String prompt, StreamCallback callback) {
+        try {
+            Flux<String> flux = chatClientBuilder.build()
+                    .prompt()
+                    .user(prompt)
+                    .stream()
+                    .content();
+
+            StringBuilder full = new StringBuilder();
+            flux.doOnNext(token -> {
+                full.append(token);
+                callback.onToken(token);
+            }).doOnComplete(() -> {
+                callback.onComplete(full.toString());
+            }).doOnError(callback::onError)
+            .subscribe();
+        } catch (Exception e) {
+            log.error("AI stream failed", e);
+            callback.onError(e);
+        }
     }
 
     private List<String> localTagExtract(String content) {

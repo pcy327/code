@@ -13,41 +13,130 @@ import { toggleStrongCommand, toggleEmphasisCommand, toggleInlineCodeCommand, wr
 import '@milkdown/theme-nord/style.css';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
-import { generateSummary, suggestTags, optimizeMarkdown } from '../api/ai';
 import { updateNote } from '../api/notes';
 import { FileText } from 'lucide-react';
 
 /* ===================================================================
- * Slash menu builder — creates DOM element with command items
+ * Helpers
  * =================================================================== */
 function execCmd(editorRef, cmd, ...args) {
   const editor = editorRef.current;
   if (!editor) return;
   try {
-    // First delete the '/' trigger character
     const view = editor.ctx.get(editorViewCtx);
     if (view) {
       const { state } = view;
       const { $from } = state.selection;
-      // Find and delete the slash character before cursor
       const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
       const slashPos = textBefore.lastIndexOf('/');
-      if (slashPos >= 0) {
+      if (slashPos >= 0 && slashPos === textBefore.length - 1) {
         const from = $from.pos - ($from.parentOffset - slashPos);
-        const to = from + 1;
-        const tr = state.tr.delete(from, to);
-        view.dispatch(tr);
+        view.dispatch(state.tr.delete(from, from + 1));
       }
     }
-    // Then execute the command
     editor.action(callCommand(cmd.key, ...args));
   } catch (e) { console.error('Command failed:', e); }
 }
 
+/* ===================================================================
+ * Streaming AI — parse // prompt, stream tokens into editor
+ * =================================================================== */
+async function streamAIResponse(editorRef, onUpdate) {
+  const editor = editorRef.current;
+  if (!editor) return;
+
+  const view = editor.ctx.get(editorViewCtx);
+  if (!view) return;
+
+  const { state } = view;
+  const { $from } = state.selection;
+
+  // Find the // trigger in current line
+  const lineStart = $from.start();
+  const lineText = state.doc.textBetween(lineStart, $from.pos);
+  const match = lineText.match(/\/\/\s*(.+)/);
+  if (!match) return;
+
+  const prompt = match[1].trim();
+  if (!prompt) return;
+
+  // Delete the // prompt line
+  const triggerStart = lineStart + lineText.indexOf('//');
+  const tr = state.tr.delete(triggerStart, $from.pos);
+  // Insert newline placeholder for streaming content
+  tr.insertText('\n');
+  view.dispatch(tr);
+
+  // Wait for state update
+  await new Promise(r => setTimeout(r, 50));
+
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  // Build accumulated content
+  let accumulated = '';
+  const insertPos = view.state.selection.from;
+
+  try {
+    const response = await fetch(`/api/ai/stream?prompt=${encodeURIComponent(prompt)}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE events
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const data = line.slice(5).trim();
+          if (!data) continue;
+
+          // Check what event type this belongs to
+          // (we parse the preceding event: line)
+          const prevLine = lines[lines.indexOf(line) - 1] || '';
+          if (prevLine.startsWith('event:error')) {
+            throw new Error(data);
+          }
+          if (prevLine.startsWith('event:done')) break;
+
+          // It's a token
+          accumulated += data;
+
+          // Insert/update in editor
+          const v = editor.ctx.get(editorViewCtx);
+          if (v) {
+            const s = v.state;
+            // Replace from insertPos to end of inserted content
+            const endPos = Math.max(insertPos, s.selection.from);
+            const t = s.tr;
+            t.replaceWith(insertPos, endPos, s.schema.text(accumulated));
+            v.dispatch(t);
+          }
+        }
+      }
+    }
+
+    onUpdate(accumulated);
+  } catch (err) {
+    console.error('AI stream failed:', err);
+  }
+}
+
+/* ===================================================================
+ * Slash menu
+ * =================================================================== */
 function buildSlashMenu(editorRef) {
   const menu = document.createElement('div');
   menu.className = 'slash-menu';
-
   const items = [
     { label: '标题 1', icon: 'H1', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 1) },
     { label: '标题 2', icon: 'H2', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 2) },
@@ -61,144 +150,103 @@ function buildSlashMenu(editorRef) {
     { label: '有序列表', icon: '1.', cmd: () => execCmd(editorRef, wrapInOrderedListCommand) },
     { label: '分割线', icon: '—', cmd: () => execCmd(editorRef, insertHrCommand) },
   ];
-
   items.forEach((item) => {
     const el = document.createElement('div');
     el.className = 'slash-item';
     el.innerHTML = `<span class="slash-icon">${item.icon}</span><span>${item.label}</span>`;
-    el.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      item.cmd();
-      menu.dataset.show = 'false';
-    });
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); item.cmd(); menu.dataset.show = 'false'; });
     menu.appendChild(el);
   });
-
   return menu;
 }
 
 /* ===================================================================
- * Tooltip builder — selection floating toolbar
+ * Selection tooltip
  * =================================================================== */
 function buildTooltip(editorRef) {
   const bar = document.createElement('div');
   bar.className = 'milkdown-tooltip-bar';
-
-  const btns = [
-    { label: 'B', title: '粗体', cmd: () => execCmd(editorRef, toggleStrongCommand) },
-    { label: 'I', title: '斜体', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
-    { label: '<>', title: '行内代码', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
-  ];
-
-  btns.forEach((b) => {
+  [{ label: 'B', title: '粗体', cmd: () => execCmd(editorRef, toggleStrongCommand) },
+   { label: 'I', title: '斜体', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
+   { label: '<>', title: '行内代码', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
+  ].forEach((b) => {
     const btn = document.createElement('button');
-    btn.textContent = b.label;
-    btn.title = b.title;
-    btn.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      b.cmd();
-    });
+    btn.textContent = b.label; btn.title = b.title;
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); b.cmd(); });
     bar.appendChild(btn);
   });
-
   return bar;
 }
 
 /* ===================================================================
- * Milkdown inner editor with slash + tooltip
+ * Milkdown inner editor
  * =================================================================== */
-function MilkdownEditor({ initialContent, onMarkdownChange }) {
+function MilkdownEditor({ initialContent, onMarkdownChange, onTriggerAI }) {
   const [loading, get] = useInstance();
   const editorRef = useRef(null);
   const composingRef = useRef(false);
 
   useEditor((root) => {
     const editor = Editor.make()
-      .config((ctx) => {
-        ctx.set(rootCtx, root);
-        ctx.set(defaultValueCtx, initialContent || '');
-      })
+      .config((ctx) => { ctx.set(rootCtx, root); ctx.set(defaultValueCtx, initialContent || ''); })
       .config(nord)
-      .use(commonmark)
-      .use(gfm)
-      .use(history)
-      .use(listener);
+      .use(commonmark).use(gfm).use(history).use(listener);
 
-    // --- Slash plugin ---
+    // Slash
     const slash = slashFactory('ainote-slash');
     const slashMenu = buildSlashMenu(editorRef);
-    const slashProvider = new SlashProvider({ content: slashMenu });
+    const sp = new SlashProvider({ content: slashMenu });
+    editor.use(slash).config((ctx) => { ctx.set(slash.key, { view: (v) => { sp.update(v); return { update: (v2, p) => sp.update(v2, p), destroy: () => sp.destroy() }; } }); });
 
-    const slashPluginView = (view) => {
-      slashProvider.update(view);
-      return { update: (v, prev) => slashProvider.update(v, prev), destroy: () => slashProvider.destroy() };
-    };
-
-    editor.use(slash).config((ctx) => {
-      ctx.set(slash.key, { view: slashPluginView });
-    });
-
-    // --- Tooltip plugin ---
+    // Tooltip
     const tooltip = tooltipFactory('ainote-tooltip');
-    const tooltipBar = buildTooltip(editorRef);
-    const tooltipProvider = new TooltipProvider({ content: tooltipBar });
+    const tp = new TooltipProvider({ content: buildTooltip(editorRef) });
+    editor.use(tooltip).config((ctx) => { ctx.set(tooltip.key, { view: (v) => { tp.update(v); return { update: (v2, p) => tp.update(v2, p), destroy: () => tp.destroy() }; } }); });
 
-    const tooltipPluginView = (view) => {
-      tooltipProvider.update(view);
-      return { update: (v, prev) => tooltipProvider.update(v, prev), destroy: () => tooltipProvider.destroy() };
-    };
-
-    editor.use(tooltip).config((ctx) => {
-      ctx.set(tooltip.key, { view: tooltipPluginView });
-    });
-
-    // --- Listener (skip during IME composition) ---
-    editor.config((ctx) => {
-      ctx.get(listenerCtx).markdownUpdated((_, md) => {
-        if (!composingRef.current) {
-          onMarkdownChange(md);
-        }
-      });
-    });
+    // Listener
+    editor.config((ctx) => { ctx.get(listenerCtx).markdownUpdated((_, md) => { if (!composingRef.current) onMarkdownChange(md); }); });
 
     return editor;
   }, []);
 
-  /* Store editor ref + attach IME listeners */
+  /* Editor ref + keyboard shortcut + IME */
   useEffect(() => {
     if (loading) return;
     const editor = get();
     editorRef.current = editor;
-    // Listen for IME composition to prevent garbled Chinese input
     let dom;
-    try { dom = editor.ctx.get(editorViewCtx).dom; } catch (e) { /* ignore */ }
+    try { dom = editor.ctx.get(editorViewCtx).dom; } catch (e) {}
     if (!dom) return;
-    const onCompositionStart = () => { composingRef.current = true; };
-    const onCompositionEnd = () => {
-      composingRef.current = false;
-      setTimeout(() => {
-        const md = editor.action(getMarkdown());
-        onMarkdownChange(md);
-      }, 50);
+
+    // IME composition
+    const onCompStart = () => { composingRef.current = true; };
+    const onCompEnd = () => { composingRef.current = false; setTimeout(() => onMarkdownChange(editor.action(getMarkdown())), 50); };
+    dom.addEventListener('compositionstart', onCompStart);
+    dom.addEventListener('compositionend', onCompEnd);
+
+    // Ctrl+Enter → AI streaming
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        onTriggerAI(editorRef);
+      }
     };
-    dom.addEventListener('compositionstart', onCompositionStart);
-    dom.addEventListener('compositionend', onCompositionEnd);
+    dom.addEventListener('keydown', onKeyDown);
+
     return () => {
-      dom.removeEventListener('compositionstart', onCompositionStart);
-      dom.removeEventListener('compositionend', onCompositionEnd);
+      dom.removeEventListener('compositionstart', onCompStart);
+      dom.removeEventListener('compositionend', onCompEnd);
+      dom.removeEventListener('keydown', onKeyDown);
     };
   }, [loading]);
 
-  /* Load content when switching notes */
+  /* Load content on note switch */
   useEffect(() => {
     if (loading) return;
     const editor = get();
     if (!editor) return;
     const current = editor.action(getMarkdown());
-    const incoming = initialContent || '';
-    if (incoming !== current) {
-      editor.action(replaceAll(incoming));
-    }
+    if ((initialContent || '') !== current) editor.action(replaceAll(initialContent || ''));
   }, [initialContent, loading]);
 
   return <Milkdown />;
@@ -216,8 +264,7 @@ export default function EditorPanel({ onHeadingsChange }) {
 
   const [localContent, setLocalContent] = useState('');
   const [currentId, setCurrentId] = useState(null);
-  const [aiResult, setAiResult] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null); // 'streaming' | null
 
   useEffect(() => {
     if (currentNote?.id !== currentId) {
@@ -229,15 +276,11 @@ export default function EditorPanel({ onHeadingsChange }) {
 
   const handleMarkdownChange = useCallback((md) => {
     setLocalContent(md);
-    // Extract headings for outline panel
+    // Extract headings
     const headings = [];
     if (md) {
-      const lines = md.split('\n');
-      let idx = 0;
-      for (const line of lines) {
-        const m = line.match(/^(#{1,3})\s+(.+)$/);
-        if (m) headings.push({ id: `h-${++idx}`, level: m[1].length, text: m[2].trim() });
-      }
+      const lines = md.split('\n'); let idx = 0;
+      for (const line of lines) { const m = line.match(/^(#{1,3})\s+(.+)$/); if (m) headings.push({ id: `h-${++idx}`, level: m[1].length, text: m[2].trim() }); }
     }
     onHeadingsChange?.(headings);
 
@@ -251,25 +294,29 @@ export default function EditorPanel({ onHeadingsChange }) {
     }, 800);
   }, [dispatch, currentNote?.id, onHeadingsChange]);
 
+  /* AI trigger — called on Ctrl+Enter */
+  const handleTriggerAI = useCallback(async (editorRef) => {
+    if (aiStatus === 'streaming') return;
+    setAiStatus('streaming');
+    try {
+      await streamAIResponse(editorRef, (finalMd) => {
+        // After streaming done, sync state
+        const editor = editorRef.current;
+        if (editor) {
+          const full = editor.action(getMarkdown());
+          setLocalContent(full);
+          dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: full } });
+          if (currentNote?.id) updateNote(currentNote.id, { content: full }).catch(() => {});
+        }
+      });
+    } catch (e) { console.error(e); }
+    setAiStatus(null);
+  }, [aiStatus, currentNote?.id, dispatch]);
+
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
   }, []);
-
-  const handleAI = async (fn, type) => {
-    setAiLoading(true); setAiResult(null);
-    try {
-      const d = await fn(localContent);
-      if (type === 'optimize' && d.content) {
-        setLocalContent(d.content);
-        dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: d.content } });
-        if (currentNote?.id) updateNote(currentNote.id, { content: d.content }).catch(() => {});
-        lastSavedRef.current = d.content;
-      }
-      setAiResult({ type, data: d.summary || d.tags || d.content || '完成' });
-    } catch (err) { setAiResult({ type: 'error', data: err.message }); }
-    setAiLoading(false);
-  };
 
   if (!currentNote) {
     return (
@@ -286,62 +333,39 @@ export default function EditorPanel({ onHeadingsChange }) {
     <div className="flex-1 flex flex-col bg-white h-full overflow-hidden">
       {/* Title */}
       <div className="shrink-0" style={{ padding: '24px 48px 8px' }}>
-        <input
-          type="text"
-          value={currentNote.title || ''}
+        <input type="text" value={currentNote.title || ''}
           onChange={(e) => {
             const t = e.target.value;
             dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'title', value: t } });
             if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
-            titleDebounceRef.current = setTimeout(() => {
-              if (currentNote?.id) updateNote(currentNote.id, { title: t }).catch(() => {});
-            }, 800);
+            titleDebounceRef.current = setTimeout(() => { if (currentNote?.id) updateNote(currentNote.id, { title: t }).catch(() => {}); }, 800);
           }}
           placeholder="无标题笔记"
-          className="w-full text-4xl font-extrabold text-gray-900 placeholder:text-gray-200
-                     bg-transparent border-none outline-none focus:ring-0 tracking-tight leading-tight"
+          className="w-full text-4xl font-extrabold text-gray-900 placeholder:text-gray-200 bg-transparent border-none outline-none focus:ring-0 tracking-tight leading-tight"
           style={{ fontFamily: "'Georgia', 'Noto Serif SC', serif" }}
         />
       </div>
+
+      {/* AI status bar */}
+      {aiStatus === 'streaming' && (
+        <div className="flex items-center gap-2 px-12 py-1">
+          <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-xs text-blue-500">AI 正在生成...</span>
+        </div>
+      )}
 
       {/* Editor */}
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '0 48px 120px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <MilkdownProvider>
-            <MilkdownEditor
-              key={currentId}
-              initialContent={localContent}
-              onMarkdownChange={handleMarkdownChange}
-            />
+            <MilkdownEditor key={currentId} initialContent={localContent}
+              onMarkdownChange={handleMarkdownChange} onTriggerAI={handleTriggerAI} />
           </MilkdownProvider>
         </div>
-      </div>
-
-      {/* AI floating bar */}
-      <div className="ai-bar">
-        <button onClick={() => handleAI(generateSummary, 'summary')} disabled={aiLoading || !localContent}
-          className="ai-bar-btn">📝 摘要</button>
-        <button onClick={() => handleAI(suggestTags, 'tags')} disabled={aiLoading || !localContent}
-          className="ai-bar-btn">🏷 标签</button>
-        <button onClick={() => handleAI(optimizeMarkdown, 'optimize')} disabled={aiLoading || !localContent}
-          className="ai-bar-btn">✨ 优化</button>
-        {aiResult && (
-          <div className="ai-popover">
-            <button onClick={() => setAiResult(null)} className="ai-popover-close">✕</button>
-            {aiLoading ? <p className="text-sm text-gray-500">处理中...</p>
-             : aiResult.type === 'summary' ? (
-              <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">AI 摘要</h4>
-              <p className="text-sm text-gray-700 leading-relaxed">{aiResult.data}</p></div>
-            ) : aiResult.type === 'tags' ? (
-              <div><h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">智能标签</h4>
-              <div className="flex flex-wrap gap-1.5">
-                {(aiResult.data || []).map((t) => (<span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">{t}</span>))}
-              </div></div>
-            ) : aiResult.type === 'error' ? (
-              <p className="text-sm text-red-500">{aiResult.data}</p>
-            ) : <p className="text-sm text-gray-700">{aiResult.data}</p>}
-          </div>
-        )}
+        {/* Hint */}
+        <div className="text-center mt-4 text-xs text-gray-300">
+          输入 <code className="bg-gray-100 px-1 rounded">// 你的问题</code> 然后 <code className="bg-gray-100 px-1 rounded">Ctrl+Enter</code> 召唤 AI
+        </div>
       </div>
     </div>
   );
