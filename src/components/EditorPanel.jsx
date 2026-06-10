@@ -60,22 +60,19 @@ async function streamAIResponse(editorRef, onUpdate) {
   const prompt = match[1].trim();
   if (!prompt) return;
 
-  // Delete the // prompt line
+  // Get full content BEFORE deleting the // line
+  let beforeMd = editor.action(getMarkdown());
+
+  // Delete the // prompt and everything on that line
   const triggerStart = lineStart + lineText.indexOf('//');
   const tr = state.tr.delete(triggerStart, $from.pos);
-  // Insert newline placeholder for streaming content
-  tr.insertText('\n');
   view.dispatch(tr);
-
-  // Wait for state update
-  await new Promise(r => setTimeout(r, 50));
 
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  // Get content before the // prompt
-  let beforeContent = editor.action(getMarkdown());
-  beforeContent = beforeContent.replace(/\n+$/, '');
+  // Trim trailing whitespace but keep existing content
+  beforeMd = beforeMd.substring(0, triggerStart).replace(/\n+$/, '');
 
   let accumulated = '';
   let lastRender = 0;
@@ -109,21 +106,26 @@ async function streamAIResponse(editorRef, onUpdate) {
 
         accumulated += data;
 
-        // Throttle: re-render every 100ms with proper Markdown parsing
+        // During streaming: show raw text for speed, no re-parse
         const now = Date.now();
         if (now - lastRender > 100) {
           lastRender = now;
-          const prefix = beforeContent ? beforeContent + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
-          editor.action(replaceAll(prefix + accumulated));
+          const sep = beforeMd ? beforeMd + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
+          // Use replaceAll to insert, Milkdown will parse after final call
+          editor.action(replaceAll(sep + accumulated));
         }
       }
     }
 
-    // Final render with visual separator
-    const prefix = beforeContent ? beforeContent + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
-    const fullMd = prefix + accumulated;
+    // FINAL: full replaceAll triggers proper Markdown parsing
+    const sep = beforeMd ? beforeMd + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
+    const fullMd = sep + accumulated;
     editor.action(replaceAll(fullMd));
-    onUpdate(fullMd);
+    // Wait a tick for Milkdown to finish parsing, then sync state
+    setTimeout(() => {
+      const final = editor.action(getMarkdown());
+      onUpdate(final);
+    }, 100);
   } catch (err) {
     console.error('AI stream failed:', err);
   }
