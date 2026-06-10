@@ -24,6 +24,22 @@ function execCmd(editorRef, cmd, ...args) {
   const editor = editorRef.current;
   if (!editor) return;
   try {
+    // First delete the '/' trigger character
+    const view = editor.ctx.get(editorViewCtx);
+    if (view) {
+      const { state } = view;
+      const { $from } = state.selection;
+      // Find and delete the slash character before cursor
+      const textBefore = $from.parent.textContent.slice(0, $from.parentOffset);
+      const slashPos = textBefore.lastIndexOf('/');
+      if (slashPos >= 0) {
+        const from = $from.pos - ($from.parentOffset - slashPos);
+        const to = from + 1;
+        const tr = state.tr.delete(from, to);
+        view.dispatch(tr);
+      }
+    }
+    // Then execute the command
     editor.action(callCommand(cmd.key, ...args));
   } catch (e) { console.error('Command failed:', e); }
 }
