@@ -45,17 +45,13 @@ function execCmd(editorRef, cmd, ...args) {
 /* ===================================================================
  * AI Stream — fetches SSE, accumulates tokens, returns full text
  * =================================================================== */
-/** Fix common Markdown formatting issues (missing spaces after markers) */
-function fixMarkdown(text) {
-  return text
-    // Fix headings: #text -> # text, ##text -> ## text, etc.
-    .replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
-    // Fix list markers: -text -> - text, *text -> * text
-    .replace(/^([-*])([^\s-*])/gm, '$1 $2')
-    // Fix ordered lists: 1.text -> 1. text
-    .replace(/^(\d+\.)([^\s\d])/gm, '$1 $2')
-    // Fix blockquote: >text -> > text
-    .replace(/^(>)([^\s>])/gm, '$1 $2');
+
+/** Safely extract SSE data value, preserving whitespace */
+function extractData(line) {
+  // Strip "data:" prefix (5 chars); if followed by a space, strip that too
+  let val = line.slice(5);
+  if (val.startsWith(' ')) val = val.slice(1);
+  return val;
 }
 
 async function fetchAIStream(prompt, onToken) {
@@ -83,22 +79,19 @@ async function fetchAIStream(prompt, onToken) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line.startsWith('data:')) continue;
-      const data = line.slice(5).trim();
-      if (!data) continue;
+      const data = extractData(line);
+      // Keep empty data lines (they represent intentional blank lines in markdown)
       const prevLine = i > 0 ? lines[i - 1] : '';
       if (prevLine.startsWith('event:error')) throw new Error(data);
       if (prevLine.startsWith('event:done')) {
-        // Apply Markdown formatting fix on final result
-        const fixed = fixMarkdown(accumulated);
-        onToken(fixed);
-        return fixed;
+        onToken(accumulated);
+        return accumulated;
       }
       accumulated += data;
-      onToken(fixMarkdown(accumulated));
+      onToken(accumulated);
     }
   }
-  const fixed = fixMarkdown(accumulated);
-  return fixed;
+  return accumulated;
 }
 
 /* ===================================================================
