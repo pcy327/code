@@ -135,8 +135,8 @@ export default function EditorPanel({ onHeadingsChange }) {
 
   return (
     <div className="flex-1 flex flex-col bg-white">
-      {/* Title */}
-      <div className="shrink-0 px-8 pt-6 pb-2">
+      {/* Title — Yuque-style: large, serif, clean */}
+      <div className="shrink-0 pt-6 pb-2" style={{ paddingLeft: '32px', paddingRight: '32px' }}>
         <input
           type="text"
           value={currentNote.title || ''}
@@ -146,7 +146,6 @@ export default function EditorPanel({ onHeadingsChange }) {
               type: ACTION.UPDATE_CURRENT_NOTE_FIELD,
               payload: { field: 'title', value: newTitle },
             });
-            // Debounce title save to API
             if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
             titleDebounceRef.current = setTimeout(() => {
               if (currentNote?.id) {
@@ -155,8 +154,10 @@ export default function EditorPanel({ onHeadingsChange }) {
             }, 800);
           }}
           placeholder="无标题笔记"
-          className="w-full text-3xl font-bold text-gray-900 placeholder:text-gray-300
-                     bg-transparent border-none outline-none focus:ring-0 tracking-tight"
+          className="w-full text-4xl font-extrabold text-gray-900 placeholder:text-gray-200
+                     bg-transparent border-none outline-none focus:ring-0 tracking-tight
+                     leading-tight"
+          style={{ fontFamily: "'Georgia', 'Noto Serif SC', serif" }}
         />
       </div>
 

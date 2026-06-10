@@ -52,49 +52,67 @@
 }
 
 /* =============================================================
- * @uiw/react-md-editor — 原生分屏模式样式
+ * @uiw/react-md-editor — Yuque-inspired minimalist style
  *
- * 使用默认 preview="live" 分屏，不做任何覆盖 hack。
- * 只清理边框阴影以融入白底，其余保持库原生行为。
+ * Auto-hide toolbar, clean typography, centered content,
+ * no visual clutter. Focus on writing.
  * ============================================================= */
+
+/* --- Reset editor chrome --- */
 [data-color-mode="light"] .w-md-editor {
   --color-border: transparent !important;
   --color-border-default: transparent !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  height: 100% !important;
 }
 
+/* --- Toolbar: auto-hide, show on hover --- */
 .w-md-editor-toolbar {
   border: none !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-  background: transparent !important;
-  padding: 6px 4px !important;
+  background: rgba(255,255,255,0.9) !important;
+  backdrop-filter: blur(8px);
+  padding: 4px 12px !important;
+  height: auto !important;
+  min-height: auto !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
+.w-md-editor:hover .w-md-editor-toolbar,
+.w-md-editor-toolbar:hover {
+  opacity: 1;
 }
 
 .w-md-editor-toolbar ul {
-  gap: 2px !important;
+  gap: 1px !important;
 }
 
 .w-md-editor-toolbar li > button {
-  color: #64748b !important;
+  color: #94a3b8 !important;
   border-radius: 6px !important;
-  height: 36px !important;
-  min-width: 36px !important;
+  height: 32px !important;
+  min-width: 32px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.15s ease !important;
+  padding: 4px !important;
 }
 
 .w-md-editor-toolbar li > button svg {
-  width: 18px !important;
-  height: 18px !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .w-md-editor-toolbar li > button:hover {
   background: #f1f5f9 !important;
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
 .w-md-editor-toolbar li > button.active {
@@ -102,8 +120,11 @@
   color: #3b82f6 !important;
 }
 
+/* --- Content area --- */
 .w-md-editor-content {
   background: transparent !important;
+  flex: 1 !important;
+  display: flex !important;
 }
 
 .w-md-editor-input {
@@ -121,34 +142,36 @@
   background: transparent !important;
 }
 
+/* --- Source editor textarea --- */
 .w-md-editor-text-input {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif !important;
-  font-size: 16px !important;
-  line-height: 1.8 !important;
-  color: #334155 !important;
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  color: #1e293b !important;
   caret-color: #3b82f6 !important;
   background: transparent !important;
+  padding: 24px 32px !important;
 }
 
 .w-md-editor-text-pre {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif !important;
-  font-size: 16px !important;
-  line-height: 1.8 !important;
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
   background: transparent !important;
+  padding: 24px 32px !important;
 }
 
 .w-md-editor-text-pre > code {
   font-family: inherit !important;
   font-size: inherit !important;
   line-height: inherit !important;
-  color: #334155 !important;
+  color: #1e293b !important;
   background: transparent !important;
 }
 
+/* --- Preview pane --- */
 .w-md-editor-preview {
-  background: transparent !important;
+  background: #fafbfc !important;
   box-shadow: none !important;
   border-left: 1px solid #f1f5f9 !important;
 }
@@ -157,104 +180,188 @@
   display: none !important;
 }
 
-/* 预览区排版 */
+/* --- Preview typography --- */
 .wmde-markdown {
   color: #334155 !important;
   background: transparent !important;
-  font-size: 16px !important;
-  line-height: 1.8 !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  padding: 24px 32px !important;
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
 }
 
-.wmde-markdown h1,
-.wmde-markdown h2,
-.wmde-markdown h3 {
+.wmde-markdown h1 {
+  font-size: 2em !important;
+  font-weight: 700 !important;
   color: #0f172a !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  padding-bottom: 0.3em !important;
+  margin-top: 1.5em !important;
+  margin-bottom: 0.6em !important;
+}
+
+.wmde-markdown h2 {
+  font-size: 1.5em !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  margin-top: 1.4em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.wmde-markdown h3 {
+  font-size: 1.2em !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  margin-top: 1.2em !important;
+  margin-bottom: 0.4em !important;
+}
+
+.wmde-markdown p {
+  margin-bottom: 0.8em !important;
 }
 
 .wmde-markdown code {
   background: #f1f5f9 !important;
-  color: #334155 !important;
+  color: #e11d48 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 0.9em !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
 }
 
 .wmde-markdown pre {
-  background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 8px !important;
+  background: #1e293b !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 20px 24px !important;
+  margin: 1em 0 !important;
+}
+
+.wmde-markdown pre code {
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0 !important;
+  font-size: 14px !important;
 }
 
 .wmde-markdown blockquote {
-  border-left: 4px solid #93c5fd !important;
-  background: #f0f7ff !important;
-  color: #475569 !important;
+  border-left: 4px solid #94a3b8 !important;
+  background: #f8fafc !important;
+  padding: 12px 20px !important;
+  color: #64748b !important;
+  border-radius: 0 8px 8px 0 !important;
+  margin: 1em 0 !important;
 }
 
-.wmde-markdown table tr:nth-child(2n) {
+.wmde-markdown table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 1em 0 !important;
+}
+
+.wmde-markdown table th,
+.wmde-markdown table td {
+  border: 1px solid #e2e8f0 !important;
+  padding: 8px 14px !important;
+}
+
+.wmde-markdown table th {
   background: #f8fafc !important;
+  font-weight: 600 !important;
+}
+
+.wmde-markdown table tr:nth-child(2n) td {
+  background: #fafbfc !important;
+}
+
+.wmde-markdown ul, .wmde-markdown ol {
+  padding-left: 1.5em !important;
+}
+
+.wmde-markdown li {
+  margin-bottom: 0.3em !important;
+}
+
+.wmde-markdown a {
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+}
+
+.wmde-markdown a:hover {
+  text-decoration: underline !important;
+}
+
+.wmde-markdown hr {
+  border: none !important;
+  border-top: 1px solid #e2e8f0 !important;
+  margin: 2em 0 !important;
 }
 
 /* =============================================================
- * AI 工具栏按钮——定位在 MDEditor 工具栏右侧
+ * AI floating action bar — subtle, bottom-center
  * ============================================================= */
 .ai-toolbar-actions {
   position: absolute;
-  top: 4px;
-  right: 8px;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   z-index: 10;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  padding: 2px 4px;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+.ai-toolbar-actions:hover {
+  opacity: 1;
 }
 
 .ai-toolbar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 4px 8px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
   font-weight: 500;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.15s ease;
   cursor: pointer;
   border: none;
   background: transparent;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .ai-toolbar-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-.ai-btn-purple {
-  color: #7c3aed;
-}
-.ai-btn-purple:not(:disabled):hover {
-  background: #f5f3ff;
+.ai-toolbar-btn:not(:disabled):hover {
+  background: #f1f5f9;
+  color: #334155;
 }
 
-.ai-btn-emerald {
-  color: #059669;
-}
-.ai-btn-emerald:not(:disabled):hover {
-  background: #ecfdf5;
-}
-
-.ai-btn-amber {
-  color: #d97706;
-}
-.ai-btn-amber:not(:disabled):hover {
-  background: #fffbeb;
-}
+.ai-btn-purple:not(:disabled):hover { color: #7c3aed; background: #f5f3ff; }
+.ai-btn-emerald:not(:disabled):hover { color: #059669; background: #ecfdf5; }
+.ai-btn-amber:not(:disabled):hover { color: #d97706; background: #fffbeb; }
 
 .ai-popover {
   position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  width: 260px;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  width: 300px;
   background: white;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   z-index: 50;
   padding: 16px;
   animation: fadeIn 0.2s ease-out;
