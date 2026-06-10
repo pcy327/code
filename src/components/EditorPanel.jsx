@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core';
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/kit/core';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
@@ -8,7 +8,7 @@ import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { slashFactory, SlashProvider } from '@milkdown/plugin-slash';
 import { tooltipFactory, TooltipProvider } from '@milkdown/plugin-tooltip';
 import { nord } from '@milkdown/theme-nord';
-import { replaceAll, getMarkdown, callCommand } from '@milkdown/kit/utils';
+import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
 import { toggleStrongCommand, toggleEmphasisCommand, toggleInlineCodeCommand, wrapInHeadingCommand, wrapInBulletListCommand, wrapInOrderedListCommand, wrapInBlockquoteCommand, insertHrCommand, createCodeBlockCommand } from '@milkdown/kit/preset/commonmark';
 import '@milkdown/theme-nord/style.css';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
@@ -20,22 +20,33 @@ import { FileText } from 'lucide-react';
 /* ===================================================================
  * Slash menu builder — creates DOM element with command items
  * =================================================================== */
+function execCmd(editorRef, cmd, ...args) {
+  const editor = editorRef.current;
+  if (!editor) return;
+  try {
+    const view = editor.ctx.get(editorViewCtx);
+    if (!view) return;
+    const cmdObj = editor.ctx.get(cmd.key);
+    cmdObj.run(view.state, view.dispatch, view, ...args);
+  } catch (e) { console.error('Command failed:', e); }
+}
+
 function buildSlashMenu(editorRef) {
   const menu = document.createElement('div');
   menu.className = 'slash-menu';
 
   const items = [
-    { label: '标题 1', icon: 'H1', cmd: () => editorRef.current?.action(callCommand(wrapInHeadingCommand, 1)) },
-    { label: '标题 2', icon: 'H2', cmd: () => editorRef.current?.action(callCommand(wrapInHeadingCommand, 2)) },
-    { label: '标题 3', icon: 'H3', cmd: () => editorRef.current?.action(callCommand(wrapInHeadingCommand, 3)) },
-    { label: '粗体', icon: 'B', cmd: () => editorRef.current?.action(callCommand(toggleStrongCommand)) },
-    { label: '斜体', icon: 'I', cmd: () => editorRef.current?.action(callCommand(toggleEmphasisCommand)) },
-    { label: '行内代码', icon: '<>', cmd: () => editorRef.current?.action(callCommand(toggleInlineCodeCommand)) },
-    { label: '代码块', icon: '```', cmd: () => editorRef.current?.action(callCommand(createCodeBlockCommand)) },
-    { label: '引用', icon: '❝', cmd: () => editorRef.current?.action(callCommand(wrapInBlockquoteCommand)) },
-    { label: '无序列表', icon: '•', cmd: () => editorRef.current?.action(callCommand(wrapInBulletListCommand)) },
-    { label: '有序列表', icon: '1.', cmd: () => editorRef.current?.action(callCommand(wrapInOrderedListCommand)) },
-    { label: '分割线', icon: '—', cmd: () => editorRef.current?.action(callCommand(insertHrCommand)) },
+    { label: '标题 1', icon: 'H1', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 1) },
+    { label: '标题 2', icon: 'H2', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 2) },
+    { label: '标题 3', icon: 'H3', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 3) },
+    { label: '粗体', icon: 'B', cmd: () => execCmd(editorRef, toggleStrongCommand) },
+    { label: '斜体', icon: 'I', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
+    { label: '行内代码', icon: '<>', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
+    { label: '代码块', icon: '```', cmd: () => execCmd(editorRef, createCodeBlockCommand) },
+    { label: '引用', icon: '❝', cmd: () => execCmd(editorRef, wrapInBlockquoteCommand) },
+    { label: '无序列表', icon: '•', cmd: () => execCmd(editorRef, wrapInBulletListCommand) },
+    { label: '有序列表', icon: '1.', cmd: () => execCmd(editorRef, wrapInOrderedListCommand) },
+    { label: '分割线', icon: '—', cmd: () => execCmd(editorRef, insertHrCommand) },
   ];
 
   items.forEach((item) => {
@@ -61,9 +72,9 @@ function buildTooltip(editorRef) {
   bar.className = 'milkdown-tooltip-bar';
 
   const btns = [
-    { label: 'B', title: '粗体', cmd: () => editorRef.current?.action(callCommand(toggleStrongCommand)) },
-    { label: 'I', title: '斜体', cmd: () => editorRef.current?.action(callCommand(toggleEmphasisCommand)) },
-    { label: '<>', title: '行内代码', cmd: () => editorRef.current?.action(callCommand(toggleInlineCodeCommand)) },
+    { label: 'B', title: '粗体', cmd: () => execCmd(editorRef, toggleStrongCommand) },
+    { label: 'I', title: '斜体', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
+    { label: '<>', title: '行内代码', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
   ];
 
   btns.forEach((b) => {
