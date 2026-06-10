@@ -51,13 +51,13 @@ export default function EditorPanel({ onHeadingsChange }) {
   const [aiResult, setAiResult] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  /* Sync local content when note changes */
+  /* Sync local content when note changes (id or content loaded from API) */
   useEffect(() => {
     setLocalContent(currentNote?.content || '');
     if (currentNote) {
       onHeadingsChange?.(extractHeadingsFromMarkdown(currentNote.content || ''));
     }
-  }, [currentNote?.id]);
+  }, [currentNote?.id, currentNote?.content]);
 
   /* Editor change handler — debounce, then save to both store and API */
   const handleChange = useCallback((value) => {
