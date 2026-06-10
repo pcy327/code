@@ -5,6 +5,8 @@ import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
+import { slashFactory } from '@milkdown/plugin-slash';
+import { tooltipFactory } from '@milkdown/plugin-tooltip';
 import { nord } from '@milkdown/theme-nord';
 import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
 import '@milkdown/theme-nord/style.css';
@@ -32,6 +34,8 @@ function MilkdownEditor({ initialContent, onMarkdownChange }) {
       .use(gfm)
       .use(history)
       .use(listener)
+      .use(slashFactory())
+      .use(tooltipFactory())
       .config((ctx) => {
         ctx.get(listenerCtx).markdownUpdated((_, md) => {
           onMarkdownChange(md);

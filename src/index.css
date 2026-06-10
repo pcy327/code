@@ -163,65 +163,70 @@
 .ai-popover-close:hover { color: #64748b; }
 
 /* =============================================================
- * AI toolbar buttons — positioned top-right of MDEditor toolbar
+ * Milkdown Slash (/) menu & Selection tooltip
  * ============================================================= */
-.ai-toolbar-actions {
-  position: absolute;
-  top: 4px;
-  right: 8px;
+
+.milkdown-slash-menu {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  padding: 6px;
+  min-width: 200px;
+}
+
+.milkdown-slash-menu .slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #334155;
+  transition: background 0.1s;
+}
+
+.milkdown-slash-menu .slash-item:hover,
+.milkdown-slash-menu .slash-item[data-active="true"] {
+  background: #f1f5f9;
+}
+
+.milkdown-slash-menu .slash-item .icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 16px;
+}
+
+.milkdown-slash-menu .slash-item .label { font-weight: 600; }
+.milkdown-slash-menu .slash-item .desc { font-size: 12px; color: #94a3b8; }
+
+/* Selection tooltip — dark floating bar */
+.milkdown-tooltip {
+  background: #1e293b;
+  color: white;
+  border-radius: 8px;
+  padding: 4px 6px;
   display: flex;
   align-items: center;
   gap: 2px;
-  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.ai-toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.milkdown-tooltip button {
+  color: #cbd5e1;
   padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  border-radius: 4px;
   cursor: pointer;
   border: none;
   background: transparent;
+  font-size: 13px;
+  transition: all 0.1s;
 }
 
-.ai-toolbar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.ai-btn-purple { color: #7c3aed; }
-.ai-btn-purple:not(:disabled):hover { background: #f5f3ff; }
-.ai-btn-emerald { color: #059669; }
-.ai-btn-emerald:not(:disabled):hover { background: #ecfdf5; }
-.ai-btn-amber { color: #d97706; }
-.ai-btn-amber:not(:disabled):hover { background: #fffbeb; }
-
-.ai-popover {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  width: 260px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  z-index: 50;
-  padding: 16px;
-  animation: fadeIn 0.2s ease-out;
+.milkdown-tooltip button:hover {
+  background: #334155;
+  color: white;
 }
-
-.ai-popover-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 6px;
-  color: #cbd5e1;
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-size: 14px;
-}
-.ai-popover-close:hover { color: #64748b; }
