@@ -7,6 +7,7 @@ import MDEditor, {
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
 import { generateSummary, suggestTags, optimizeMarkdown } from '../api/ai';
+import { updateNote } from '../api/notes';
 import { FileText, Sparkles, Tags, AlignLeft } from 'lucide-react';
 
 /* ===================================================================
@@ -43,6 +44,7 @@ export default function EditorPanel({ onHeadingsChange }) {
   const { currentNote } = useNoteState();
   const dispatch = useNoteDispatch();
   const debounceRef = useRef(null);
+  const titleDebounceRef = useRef(null);
 
   const [localContent, setLocalContent] = useState('');
   const [aiPanel, setAiPanel] = useState(null);
@@ -57,7 +59,7 @@ export default function EditorPanel({ onHeadingsChange }) {
     }
   }, [currentNote?.id]);
 
-  /* Editor change handler */
+  /* Editor change handler — debounce, then save to both store and API */
   const handleChange = useCallback((value) => {
     const text = value || '';
     setLocalContent(text);
@@ -68,10 +70,17 @@ export default function EditorPanel({ onHeadingsChange }) {
         type: ACTION.UPDATE_CURRENT_NOTE_FIELD,
         payload: { field: 'content', value: text },
       });
+      // Persist to backend
+      if (currentNote?.id) {
+        updateNote(currentNote.id, { content: text }).catch(() => {});
+      }
     }, 800);
-  }, [dispatch, onHeadingsChange]);
+  }, [dispatch, onHeadingsChange, currentNote?.id]);
 
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
+  }, []);
 
   /* ---- AI actions (real API calls) ---- */
   const handleAISummary = async () => {
@@ -131,12 +140,20 @@ export default function EditorPanel({ onHeadingsChange }) {
         <input
           type="text"
           value={currentNote.title || ''}
-          onChange={(e) =>
+          onChange={(e) => {
+            const newTitle = e.target.value;
             dispatch({
               type: ACTION.UPDATE_CURRENT_NOTE_FIELD,
-              payload: { field: 'title', value: e.target.value },
-            })
-          }
+              payload: { field: 'title', value: newTitle },
+            });
+            // Debounce title save to API
+            if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
+            titleDebounceRef.current = setTimeout(() => {
+              if (currentNote?.id) {
+                updateNote(currentNote.id, { title: newTitle }).catch(() => {});
+              }
+            }, 800);
+          }}
           placeholder="无标题笔记"
           className="w-full text-3xl font-bold text-gray-900 placeholder:text-gray-300
                      bg-transparent border-none outline-none focus:ring-0 tracking-tight"
