@@ -163,10 +163,15 @@
 .ai-popover-close:hover { color: #64748b; }
 
 /* =============================================================
- * Milkdown Slash (/) menu & Selection tooltip
+ * Slash (/) command menu
  * ============================================================= */
 
-.milkdown-slash-menu {
+/* Container — positioned by Floating UI */
+.slash-menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -175,11 +180,15 @@
   min-width: 200px;
 }
 
-.milkdown-slash-menu .slash-item {
+/* Hide by default, show via data-show */
+.slash-menu[data-show="false"] { display: none; }
+.slash-menu[data-show="true"] { display: block; }
+
+.slash-menu .slash-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
@@ -187,26 +196,28 @@
   transition: background 0.1s;
 }
 
-.milkdown-slash-menu .slash-item:hover,
-.milkdown-slash-menu .slash-item[data-active="true"] {
-  background: #f1f5f9;
-}
+.slash-menu .slash-item:hover { background: #f1f5f9; }
 
-.milkdown-slash-menu .slash-item .icon {
-  width: 32px; height: 32px;
+.slash-menu .slash-icon {
+  width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 6px;
   background: #f8fafc;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.milkdown-slash-menu .slash-item .label { font-weight: 600; }
-.milkdown-slash-menu .slash-item .desc { font-size: 12px; color: #94a3b8; }
+/* =============================================================
+ * Selection tooltip — dark floating bar
+ * ============================================================= */
 
-/* Selection tooltip — dark floating bar */
-.milkdown-tooltip {
+.milkdown-tooltip-bar {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 100;
   background: #1e293b;
-  color: white;
   border-radius: 8px;
   padding: 4px 6px;
   display: flex;
@@ -215,18 +226,23 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.milkdown-tooltip button {
+.milkdown-tooltip-bar[data-show="false"] { display: none; }
+.milkdown-tooltip-bar[data-show="true"] { display: flex; }
+
+.milkdown-tooltip-bar button {
   color: #cbd5e1;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 4px;
   cursor: pointer;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   transition: all 0.1s;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.milkdown-tooltip button:hover {
+.milkdown-tooltip-bar button:hover {
   background: #334155;
   color: white;
 }
