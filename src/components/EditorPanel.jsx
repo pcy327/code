@@ -94,7 +94,7 @@ async function fetchAIStream(prompt, onToken) {
         return fixed;
       }
       accumulated += data;
-      onToken(accumulated);
+      onToken(fixMarkdown(accumulated));
     }
   }
   const fixed = fixMarkdown(accumulated);
@@ -347,16 +347,14 @@ export default function EditorPanel({ onHeadingsChange }) {
     }
   }, []);
 
-  /* Insert AI response into editor */
+  /* Insert AI response into Milkdown editor via content state change */
   const handleInsertAI = useCallback(() => {
     if (!aiState?.content) return;
-    const editor = document.querySelector('.milkdown .ProseMirror');
     const sep = '\n\n---\n**🤖 AI 回答**\n\n';
     const newContent = localContent + sep + aiState.content;
-    syncContent(newContent);
-    // Update editor via replaceAll
-    const instance = document.querySelector('[data-milkdown-root]');
     setAiState(null);
+    // syncContent updates localContent state → MilkdownEditor useEffect picks it up → replaceAll fires
+    syncContent(newContent);
   }, [aiState, localContent, syncContent]);
 
   useEffect(() => () => {
