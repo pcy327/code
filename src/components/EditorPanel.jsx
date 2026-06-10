@@ -11,10 +11,14 @@ import { nord } from '@milkdown/theme-nord';
 import { replaceAll, getMarkdown, callCommand } from '@milkdown/kit/utils';
 import { toggleStrongCommand, toggleEmphasisCommand, toggleInlineCodeCommand, wrapInHeadingCommand, wrapInBulletListCommand, wrapInOrderedListCommand, wrapInBlockquoteCommand, insertHrCommand, createCodeBlockCommand } from '@milkdown/kit/preset/commonmark';
 import '@milkdown/theme-nord/style.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
 import { updateNote } from '../api/notes';
-import { FileText } from 'lucide-react';
+import { FileText, Bot, X, Copy, Check } from 'lucide-react';
 
 /* ===================================================================
  * Helpers
@@ -39,96 +43,105 @@ function execCmd(editorRef, cmd, ...args) {
 }
 
 /* ===================================================================
- * Streaming AI — parse // prompt, stream tokens into editor
+ * AI Stream — fetches SSE, accumulates tokens, returns full text
  * =================================================================== */
-async function streamAIResponse(editorRef, onUpdate) {
-  const editor = editorRef.current;
-  if (!editor) return;
-
-  const view = editor.ctx.get(editorViewCtx);
-  if (!view) return;
-
-  const { state } = view;
-  const { $from } = state.selection;
-
-  // Find the // trigger in current line
-  const lineStart = $from.start();
-  const lineText = state.doc.textBetween(lineStart, $from.pos);
-  const match = lineText.match(/\/\/\s*(.+)/);
-  if (!match) return;
-
-  const prompt = match[1].trim();
-  if (!prompt) return;
-
-  // Get full content BEFORE deleting the // line
-  let beforeMd = editor.action(getMarkdown());
-
-  // Delete the // prompt and everything on that line
-  const triggerStart = lineStart + lineText.indexOf('//');
-  const tr = state.tr.delete(triggerStart, $from.pos);
-  view.dispatch(tr);
-
+async function fetchAIStream(prompt, onToken) {
   const token = localStorage.getItem('token');
-  if (!token) return;
+  if (!token) throw new Error('未登录');
 
-  // Trim trailing whitespace but keep existing content
-  beforeMd = beforeMd.substring(0, triggerStart).replace(/\n+$/, '');
+  const resp = await fetch(`/api/ai/stream?prompt=${encodeURIComponent(prompt)}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
 
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
   let accumulated = '';
-  let lastRender = 0;
 
-  try {
-    const response = await fetch(`/api/ai/stream?prompt=${encodeURIComponent(prompt)}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if (!data) continue;
-
-        const idx = lines.indexOf(line);
-        const prevLine = idx > 0 ? lines[idx - 1] : '';
-        if (prevLine.startsWith('event:error')) throw new Error(data);
-        if (prevLine.startsWith('event:done')) break;
-
-        accumulated += data;
-
-        // During streaming: show raw text for speed, no re-parse
-        const now = Date.now();
-        if (now - lastRender > 100) {
-          lastRender = now;
-          const sep = beforeMd ? beforeMd + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
-          // Use replaceAll to insert, Milkdown will parse after final call
-          editor.action(replaceAll(sep + accumulated));
-        }
-      }
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data) continue;
+      const prevLine = i > 0 ? lines[i - 1] : '';
+      if (prevLine.startsWith('event:error')) throw new Error(data);
+      if (prevLine.startsWith('event:done')) return accumulated;
+      accumulated += data;
+      onToken(accumulated);
     }
-
-    // FINAL: full replaceAll triggers proper Markdown parsing
-    const sep = beforeMd ? beforeMd + '\n\n---\n**🤖 AI 回答**\n\n' : '**🤖 AI 回答**\n\n';
-    const fullMd = sep + accumulated;
-    editor.action(replaceAll(fullMd));
-    // Wait a tick for Milkdown to finish parsing, then sync state
-    setTimeout(() => {
-      const final = editor.action(getMarkdown());
-      onUpdate(final);
-    }, 100);
-  } catch (err) {
-    console.error('AI stream failed:', err);
   }
+  return accumulated;
+}
+
+/* ===================================================================
+ * AI Bubble component — styled card with Markdown rendering
+ * =================================================================== */
+function AiBubble({ content, streaming, onClose, onInsert }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="ai-bubble">
+      <div className="ai-bubble-header">
+        <div className="flex items-center gap-2">
+          <Bot className="w-4 h-4 text-indigo-500" />
+          <span className="text-sm font-semibold text-indigo-600">AI 回答</span>
+          {streaming && (
+            <span className="flex items-center gap-1 text-xs text-indigo-400">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              生成中...
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={handleCopy} className="ai-bubble-icon-btn" title="复制">
+            {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={onInsert} className="ai-bubble-icon-btn" title="插入到笔记">
+            <FileText className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={onClose} className="ai-bubble-icon-btn" title="关闭">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="ai-bubble-body">
+        {content ? (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ node, inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '');
+                return !inline && match ? (
+                  <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>{children}</code>
+                );
+              },
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        ) : (
+          <p className="text-gray-300 italic">等待 AI 回复...</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ===================================================================
@@ -137,7 +150,7 @@ async function streamAIResponse(editorRef, onUpdate) {
 function buildSlashMenu(editorRef) {
   const menu = document.createElement('div');
   menu.className = 'slash-menu';
-  const items = [
+  [
     { label: '标题 1', icon: 'H1', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 1) },
     { label: '标题 2', icon: 'H2', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 2) },
     { label: '标题 3', icon: 'H3', cmd: () => execCmd(editorRef, wrapInHeadingCommand, 3) },
@@ -149,8 +162,7 @@ function buildSlashMenu(editorRef) {
     { label: '无序列表', icon: '•', cmd: () => execCmd(editorRef, wrapInBulletListCommand) },
     { label: '有序列表', icon: '1.', cmd: () => execCmd(editorRef, wrapInOrderedListCommand) },
     { label: '分割线', icon: '—', cmd: () => execCmd(editorRef, insertHrCommand) },
-  ];
-  items.forEach((item) => {
+  ].forEach((item) => {
     const el = document.createElement('div');
     el.className = 'slash-item';
     el.innerHTML = `<span class="slash-icon">${item.icon}</span><span>${item.label}</span>`;
@@ -160,15 +172,13 @@ function buildSlashMenu(editorRef) {
   return menu;
 }
 
-/* ===================================================================
- * Selection tooltip
- * =================================================================== */
 function buildTooltip(editorRef) {
   const bar = document.createElement('div');
   bar.className = 'milkdown-tooltip-bar';
-  [{ label: 'B', title: '粗体', cmd: () => execCmd(editorRef, toggleStrongCommand) },
-   { label: 'I', title: '斜体', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
-   { label: '<>', title: '行内代码', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
+  [
+    { label: 'B', title: '粗体', cmd: () => execCmd(editorRef, toggleStrongCommand) },
+    { label: 'I', title: '斜体', cmd: () => execCmd(editorRef, toggleEmphasisCommand) },
+    { label: '<>', title: '行内代码', cmd: () => execCmd(editorRef, toggleInlineCodeCommand) },
   ].forEach((b) => {
     const btn = document.createElement('button');
     btn.textContent = b.label; btn.title = b.title;
@@ -189,64 +199,50 @@ function MilkdownEditor({ initialContent, onMarkdownChange, onTriggerAI }) {
   useEditor((root) => {
     const editor = Editor.make()
       .config((ctx) => { ctx.set(rootCtx, root); ctx.set(defaultValueCtx, initialContent || ''); })
-      .config(nord)
-      .use(commonmark).use(gfm).use(history).use(listener);
+      .config(nord).use(commonmark).use(gfm).use(history).use(listener);
 
-    // Slash
     const slash = slashFactory('ainote-slash');
-    const slashMenu = buildSlashMenu(editorRef);
-    const sp = new SlashProvider({ content: slashMenu });
+    const sp = new SlashProvider({ content: buildSlashMenu(editorRef) });
     editor.use(slash).config((ctx) => { ctx.set(slash.key, { view: (v) => { sp.update(v); return { update: (v2, p) => sp.update(v2, p), destroy: () => sp.destroy() }; } }); });
 
-    // Tooltip
     const tooltip = tooltipFactory('ainote-tooltip');
     const tp = new TooltipProvider({ content: buildTooltip(editorRef) });
     editor.use(tooltip).config((ctx) => { ctx.set(tooltip.key, { view: (v) => { tp.update(v); return { update: (v2, p) => tp.update(v2, p), destroy: () => tp.destroy() }; } }); });
 
-    // Listener
     editor.config((ctx) => { ctx.get(listenerCtx).markdownUpdated((_, md) => { if (!composingRef.current) onMarkdownChange(md); }); });
-
     return editor;
   }, []);
 
-  /* Editor ref + keyboard shortcut + IME */
   useEffect(() => {
     if (loading) return;
     const editor = get();
     editorRef.current = editor;
     let dom;
-    try { dom = editor.ctx.get(editorViewCtx).dom; } catch (e) {}
+    try { dom = editor.ctx.get(editorViewCtx).dom; } catch (e) { }
     if (!dom) return;
+    const onCS = () => { composingRef.current = true; };
+    const onCE = () => { composingRef.current = false; setTimeout(() => onMarkdownChange(editor.action(getMarkdown())), 50); };
+    dom.addEventListener('compositionstart', onCS);
+    dom.addEventListener('compositionend', onCE);
 
-    // IME composition
-    const onCompStart = () => { composingRef.current = true; };
-    const onCompEnd = () => { composingRef.current = false; setTimeout(() => onMarkdownChange(editor.action(getMarkdown())), 50); };
-    dom.addEventListener('compositionstart', onCompStart);
-    dom.addEventListener('compositionend', onCompEnd);
-
-    // Ctrl+Enter → AI streaming
-    const onKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        onTriggerAI(editorRef);
-      }
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); onTriggerAI(editorRef); }
     };
-    dom.addEventListener('keydown', onKeyDown);
+    dom.addEventListener('keydown', onKey);
 
     return () => {
-      dom.removeEventListener('compositionstart', onCompStart);
-      dom.removeEventListener('compositionend', onCompEnd);
-      dom.removeEventListener('keydown', onKeyDown);
+      dom.removeEventListener('compositionstart', onCS);
+      dom.removeEventListener('compositionend', onCE);
+      dom.removeEventListener('keydown', onKey);
     };
   }, [loading]);
 
-  /* Load content on note switch */
   useEffect(() => {
     if (loading) return;
     const editor = get();
     if (!editor) return;
-    const current = editor.action(getMarkdown());
-    if ((initialContent || '') !== current) editor.action(replaceAll(initialContent || ''));
+    const cur = editor.action(getMarkdown());
+    if ((initialContent || '') !== cur) editor.action(replaceAll(initialContent || ''));
   }, [initialContent, loading]);
 
   return <Milkdown />;
@@ -264,54 +260,83 @@ export default function EditorPanel({ onHeadingsChange }) {
 
   const [localContent, setLocalContent] = useState('');
   const [currentId, setCurrentId] = useState(null);
-  const [aiStatus, setAiStatus] = useState(null); // 'streaming' | null
+  const [aiState, setAiState] = useState(null); // { content, streaming }
 
   useEffect(() => {
     if (currentNote?.id !== currentId) {
       setCurrentId(currentNote?.id);
       setLocalContent(currentNote?.content || '');
       lastSavedRef.current = currentNote?.content || '';
+      setAiState(null);
     }
   }, [currentNote?.id]);
 
+  const syncContent = useCallback((md) => {
+    setLocalContent(md);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: md } });
+      if (currentNote?.id && md !== lastSavedRef.current) {
+        updateNote(currentNote.id, { content: md }).catch(() => { });
+        lastSavedRef.current = md;
+      }
+    }, 800);
+  }, [dispatch, currentNote?.id]);
+
   const handleMarkdownChange = useCallback((md) => {
     setLocalContent(md);
-    // Extract headings
     const headings = [];
     if (md) {
       const lines = md.split('\n'); let idx = 0;
       for (const line of lines) { const m = line.match(/^(#{1,3})\s+(.+)$/); if (m) headings.push({ id: `h-${++idx}`, level: m[1].length, text: m[2].trim() }); }
     }
     onHeadingsChange?.(headings);
+    syncContent(md);
+  }, [syncContent, onHeadingsChange]);
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: md } });
-      if (currentNote?.id && md !== lastSavedRef.current) {
-        updateNote(currentNote.id, { content: md }).catch(() => {});
-        lastSavedRef.current = md;
-      }
-    }, 800);
-  }, [dispatch, currentNote?.id, onHeadingsChange]);
-
-  /* AI trigger — called on Ctrl+Enter */
+  /* AI trigger */
   const handleTriggerAI = useCallback(async (editorRef) => {
-    if (aiStatus === 'streaming') return;
-    setAiStatus('streaming');
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const view = editor.ctx.get(editorViewCtx);
+    if (!view) return;
+    const { state } = view;
+    const { $from } = state.selection;
+    const lineStart = $from.start();
+    const lineText = state.doc.textBetween(lineStart, $from.pos);
+    const match = lineText.match(/\/\/\s*(.+)/);
+    if (!match) return;
+    const prompt = match[1].trim();
+    if (!prompt) return;
+
+    // Delete the // prompt line
+    const triggerStart = lineStart + lineText.indexOf('//');
+    view.dispatch(state.tr.delete(triggerStart, $from.pos));
+
+    setAiState({ content: '', streaming: true });
+
     try {
-      await streamAIResponse(editorRef, (finalMd) => {
-        // After streaming done, sync state
-        const editor = editorRef.current;
-        if (editor) {
-          const full = editor.action(getMarkdown());
-          setLocalContent(full);
-          dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'content', value: full } });
-          if (currentNote?.id) updateNote(currentNote.id, { content: full }).catch(() => {});
-        }
+      const fullText = await fetchAIStream(prompt, (partial) => {
+        setAiState({ content: partial, streaming: true });
       });
-    } catch (e) { console.error(e); }
-    setAiStatus(null);
-  }, [aiStatus, currentNote?.id, dispatch]);
+      setAiState({ content: fullText, streaming: false });
+    } catch (err) {
+      setAiState({ content: 'AI 请求失败: ' + err.message, streaming: false });
+    }
+  }, []);
+
+  /* Insert AI response into editor */
+  const handleInsertAI = useCallback(() => {
+    if (!aiState?.content) return;
+    const editor = document.querySelector('.milkdown .ProseMirror');
+    const sep = '\n\n---\n**🤖 AI 回答**\n\n';
+    const newContent = localContent + sep + aiState.content;
+    syncContent(newContent);
+    // Update editor via replaceAll
+    const instance = document.querySelector('[data-milkdown-root]');
+    setAiState(null);
+  }, [aiState, localContent, syncContent]);
 
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -323,7 +348,7 @@ export default function EditorPanel({ onHeadingsChange }) {
       <div className="h-full flex items-center justify-center text-gray-300 bg-white">
         <div className="text-center">
           <FileText className="w-16 h-16 mx-auto mb-3 text-gray-200" />
-          <p className="text-base">选择或新建一篇笔记开始编辑</p>
+          <p className="text-base">Select or create a note to begin</p>
         </div>
       </div>
     );
@@ -338,23 +363,15 @@ export default function EditorPanel({ onHeadingsChange }) {
             const t = e.target.value;
             dispatch({ type: ACTION.UPDATE_CURRENT_NOTE_FIELD, payload: { field: 'title', value: t } });
             if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
-            titleDebounceRef.current = setTimeout(() => { if (currentNote?.id) updateNote(currentNote.id, { title: t }).catch(() => {}); }, 800);
+            titleDebounceRef.current = setTimeout(() => { if (currentNote?.id) updateNote(currentNote.id, { title: t }).catch(() => { }); }, 800);
           }}
-          placeholder="无标题笔记"
+          placeholder="Untitled"
           className="w-full text-4xl font-extrabold text-gray-900 placeholder:text-gray-200 bg-transparent border-none outline-none focus:ring-0 tracking-tight leading-tight"
           style={{ fontFamily: "'Georgia', 'Noto Serif SC', serif" }}
         />
       </div>
 
-      {/* AI status bar */}
-      {aiStatus === 'streaming' && (
-        <div className="flex items-center gap-2 px-12 py-1">
-          <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-xs text-blue-500">AI 正在生成...</span>
-        </div>
-      )}
-
-      {/* Editor */}
+      {/* Editor + AI bubble */}
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '0 48px 120px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <MilkdownProvider>
@@ -362,9 +379,22 @@ export default function EditorPanel({ onHeadingsChange }) {
               onMarkdownChange={handleMarkdownChange} onTriggerAI={handleTriggerAI} />
           </MilkdownProvider>
         </div>
+
+        {/* AI bubble card */}
+        {aiState && (
+          <div style={{ maxWidth: 800, margin: '24px auto 0' }}>
+            <AiBubble
+              content={aiState.content}
+              streaming={aiState.streaming}
+              onClose={() => setAiState(null)}
+              onInsert={handleInsertAI}
+            />
+          </div>
+        )}
+
         {/* Hint */}
         <div className="text-center mt-4 text-xs text-gray-300">
-          输入 <code className="bg-gray-100 px-1 rounded">// 你的问题</code> 然后 <code className="bg-gray-100 px-1 rounded">Ctrl+Enter</code> 召唤 AI
+          Type <code className="bg-gray-100 px-1 rounded">// your question</code> and press <code className="bg-gray-100 px-1 rounded">Ctrl+Enter</code> to ask AI
         </div>
       </div>
     </div>
