@@ -7,6 +7,8 @@ import com.ainote.service.AiService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -40,15 +42,16 @@ public class AiController {
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam String prompt) {
-        SseEmitter emitter = new SseEmitter(120_000L); // 2 min timeout
+        SseEmitter emitter = new SseEmitter(120_000L);
+        // Capture security context for async thread
+        SecurityContext secCtx = SecurityContextHolder.getContext();
 
         aiService.streamChat(prompt, new AiService.StreamCallback() {
             @Override
             public void onToken(String token) {
+                SecurityContextHolder.setContext(secCtx);
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name("token")
-                            .data(token));
+                    emitter.send(SseEmitter.event().name("token").data(token));
                 } catch (IOException e) {
                     emitter.completeWithError(e);
                 }
@@ -56,10 +59,9 @@ public class AiController {
 
             @Override
             public void onComplete(String fullText) {
+                SecurityContextHolder.setContext(secCtx);
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name("done")
-                            .data(fullText));
+                    emitter.send(SseEmitter.event().name("done").data(fullText));
                     emitter.complete();
                 } catch (IOException e) {
                     emitter.completeWithError(e);
@@ -68,13 +70,10 @@ public class AiController {
 
             @Override
             public void onError(Throwable e) {
+                SecurityContextHolder.setContext(secCtx);
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name("error")
-                            .data(e.getMessage()));
-                } catch (IOException ex) {
-                    // ignore
-                }
+                    emitter.send(SseEmitter.event().name("error").data(e.getMessage()));
+                } catch (IOException ex) { /* ignore */ }
                 emitter.completeWithError(e);
             }
         });
