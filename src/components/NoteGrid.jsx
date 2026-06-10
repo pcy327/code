@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
+import { createNote } from '../api/notes';
 import NoteCard from './NoteCard';
 import { Plus } from 'lucide-react';
 
@@ -16,7 +17,7 @@ export default function NoteGrid() {
     return notes.filter(
       (n) =>
         n.title.toLowerCase().includes(kw) ||
-        n.content.toLowerCase().includes(kw) ||
+        (n.summary || '').toLowerCase().includes(kw) ||
         (n.tags || []).some((t) => t.toLowerCase().includes(kw)),
     );
   }, [notes, searchKeyword]);
@@ -29,20 +30,25 @@ export default function NoteGrid() {
     );
   }
 
-  /* 新建笔记（如果处于标签搜索状态，自动归类到该标签） */
-  const handleNewNote = () => {
-    const newId = String(Date.now());
-    const tags = searchKeyword ? [searchKeyword] : [];
-    dispatch({
-      type: ACTION.ADD_NOTE,
-      payload: { id: newId, title: '未命名笔记', content: '', summary: '', tags },
-    });
-    navigate(`/workspace/${newId}`);
+  const handleNewNote = async () => {
+    try {
+      const data = await createNote({ title: '未命名笔记', content: '', tagIds: [] });
+      const newNote = {
+        id: String(data.id),
+        title: data.title,
+        content: '',
+        summary: data.summary || '',
+        tags: (data.tags || []).map((t) => t.name),
+        updatedAt: data.updatedAt,
+      };
+      dispatch({ type: ACTION.ADD_NOTE, payload: newNote });
+      navigate(`/workspace/${data.id}`);
+    } catch (err) {
+      console.error('Failed to create note', err);
+    }
   };
 
-  const sectionTitle = searchKeyword
-    ? `📁 ${searchKeyword}`
-    : '📄 全部笔记';
+  const sectionTitle = searchKeyword ? `📁 ${searchKeyword}` : '📄 全部笔记';
 
   if (filteredNotes.length === 0) {
     return (
@@ -79,9 +85,7 @@ export default function NoteGrid() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
           {sectionTitle}
-          <span className="ml-2 text-gray-400 font-normal">
-            ({filteredNotes.length})
-          </span>
+          <span className="ml-2 text-gray-400 font-normal">({filteredNotes.length})</span>
         </h2>
         <button
           onClick={handleNewNote}

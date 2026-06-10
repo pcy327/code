@@ -1,14 +1,11 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
+import { updateNote } from '../api/notes';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 
-/**
- * 从 Markdown 内容中提取纯文本摘要（首行）
- */
 function contentSnippet(content, maxLen = 60) {
   if (!content) return '暂无内容';
-  // 移除 Markdown 标记
   const plain = content
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/[`*~_>\[\]()]/g, '')
@@ -16,11 +13,8 @@ function contentSnippet(content, maxLen = 60) {
     .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
-  // 取第一行
   const firstLine = plain.split('\n').filter(Boolean)[0] || '暂无内容';
-  return firstLine.length > maxLen
-    ? firstLine.slice(0, maxLen) + '…'
-    : firstLine;
+  return firstLine.length > maxLen ? firstLine.slice(0, maxLen) + '…' : firstLine;
 }
 
 export default function Sidebar() {
@@ -29,20 +23,39 @@ export default function Sidebar() {
   const { notes, currentNote } = useNoteState();
   const dispatch = useNoteDispatch();
 
-  /* 最近 5 篇笔记（按 updatedAt 降序） */
   const recentNotes = [...notes]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 5);
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (currentNote) {
+      try {
+        await updateNote(currentNote.id, {
+          title: currentNote.title,
+          content: currentNote.content,
+          summary: currentNote.summary,
+          tagIds: [],
+        });
+      } catch (err) {
+        console.error('Failed to save note', err);
+      }
       dispatch({ type: ACTION.SAVE_CURRENT_NOTE });
     }
     navigate('/');
   };
 
-  const handleSwitchNote = (note) => {
+  const handleSwitchNote = async (note) => {
     if (currentNote) {
+      try {
+        await updateNote(currentNote.id, {
+          title: currentNote.title,
+          content: currentNote.content,
+          summary: currentNote.summary,
+          tagIds: [],
+        });
+      } catch (err) {
+        console.error('Failed to save note', err);
+      }
       dispatch({ type: ACTION.SAVE_CURRENT_NOTE });
     }
     dispatch({ type: ACTION.SET_CURRENT_NOTE, payload: note });
@@ -56,7 +69,6 @@ export default function Sidebar() {
 
   return (
     <aside className="w-full h-full flex flex-col bg-white border-r border-gray-200">
-      {/* 返回按钮 */}
       <div className="p-3 border-b border-gray-100">
         <button
           onClick={handleBack}
@@ -68,28 +80,21 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* 最近笔记列表 */}
       <div className="flex-1 overflow-y-auto py-2">
         <h3 className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
           最近笔记
         </h3>
-
         <div className="space-y-0.5 px-2">
           {recentNotes.map((note) => {
             const isActive = note.id === noteId;
-            const snippet = contentSnippet(note.content);
-
+            const snippet = contentSnippet(note.content || note.summary);
             return (
               <button
                 key={note.id}
                 onClick={() => handleSwitchNote(note)}
                 className={`w-full text-left relative transition-all duration-150 cursor-pointer
-                  ${isActive
-                    ? 'bg-blue-50'
-                    : 'hover:bg-gray-50'
-                  } rounded-lg`}
+                  ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'} rounded-lg`}
               >
-                {/* 左侧激活指示条 */}
                 {isActive && (
                   <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-500 rounded-full" />
                 )}
@@ -107,13 +112,11 @@ export default function Sidebar() {
             );
           })}
         </div>
-
         {recentNotes.length === 0 && (
           <p className="text-xs text-gray-300 text-center py-8">暂无笔记</p>
         )}
       </div>
 
-      {/* 底部：重置按钮（开发用） */}
       <div className="p-3 border-t border-gray-100">
         <button
           onClick={handleReset}
