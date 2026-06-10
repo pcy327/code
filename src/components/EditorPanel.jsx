@@ -73,9 +73,8 @@ async function streamAIResponse(editorRef, onUpdate) {
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  // Get content before the // prompt (which we just deleted)
+  // Get content before the // prompt
   let beforeContent = editor.action(getMarkdown());
-  // Remove the trailing empty line we added
   beforeContent = beforeContent.replace(/\n+$/, '');
 
   let accumulated = '';
@@ -110,17 +109,19 @@ async function streamAIResponse(editorRef, onUpdate) {
 
         accumulated += data;
 
-        // Throttle: re-render via replaceAll every 100ms so Markdown gets parsed
+        // Throttle: re-render every 100ms, wrapping AI content in blockquote bubble
         const now = Date.now();
         if (now - lastRender > 100) {
           lastRender = now;
-          editor.action(replaceAll((beforeContent ? beforeContent + '\n\n' : '') + accumulated));
+          const bubble = '> 🤖 **AI 回答**\n>\n' + accumulated.split('\n').map(l => l ? '> ' + l : '>').join('\n');
+          editor.action(replaceAll((beforeContent ? beforeContent + '\n\n' : '') + bubble));
         }
       }
     }
 
-    // Final render with proper Markdown parsing
-    const fullMd = (beforeContent ? beforeContent + '\n\n' : '') + accumulated;
+    // Final render: wrap in blockquote bubble
+    const bubble = '> 🤖 **AI 回答**\n>\n' + accumulated.split('\n').map(l => l ? '> ' + l : '>').join('\n');
+    const fullMd = (beforeContent ? beforeContent + '\n\n' : '') + bubble;
     editor.action(replaceAll(fullMd));
     onUpdate(fullMd);
   } catch (err) {
