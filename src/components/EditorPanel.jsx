@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
+import { Editor } from '@milkdown/kit/core';
 import { nord } from '@milkdown/theme-nord';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
@@ -17,21 +18,12 @@ import { FileText, Sparkles, Tags, AlignLeft } from 'lucide-react';
  * =================================================================== */
 function MilkdownInner({ content, onContentChange }) {
   const [loading, getInstance] = useInstance();
+  const contentRef = useRef(content);
+  contentRef.current = content;
 
-  useEffect(() => {
-    if (loading) return;
-    const editor = getInstance();
-    if (!editor) return;
-
-    // Replace content when prop changes (e.g. switching notes)
-    const currentMd = editor.action(getMarkdown());
-    if (content && currentMd !== content) {
-      editor.action(replaceAll(content));
-    }
-  }, [content, loading]);
-
+  // Init editor only once
   useEditor((root) => {
-    return editor
+    return Editor.make()
       .config(nord)
       .use(commonmark)
       .use(gfm)
@@ -43,6 +35,27 @@ function MilkdownInner({ content, onContentChange }) {
         });
       });
   }, []);
+
+  // Set initial content when editor is ready
+  useEffect(() => {
+    if (loading) return;
+    const editor = getInstance();
+    if (!editor) return;
+    if (contentRef.current) {
+      editor.action(replaceAll(contentRef.current));
+    }
+  }, [loading]);
+
+  // Switch content when note changes (editor already loaded)
+  useEffect(() => {
+    if (loading) return;
+    const editor = getInstance();
+    if (!editor) return;
+    const currentMd = editor.action(getMarkdown());
+    if (content && content !== currentMd) {
+      editor.action(replaceAll(content));
+    }
+  }, [content]);
 
   return <Milkdown />;
 }
