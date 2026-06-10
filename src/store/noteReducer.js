@@ -15,6 +15,7 @@ export const initialState = {
   isLoading: false,
   searchKeyword: '',
   customTags: [],
+  tagMap: {},         // tag name → tag id mapping for quick lookup
 };
 
 /* ==============================================================
@@ -34,6 +35,7 @@ export const ACTION = {
   ADD_TAG: 'ADD_TAG',
   REMOVE_TAG: 'REMOVE_TAG',
   SET_CUSTOM_TAGS: 'SET_CUSTOM_TAGS',
+  SET_TAG_MAP: 'SET_TAG_MAP',
 };
 
 /* ==============================================================
@@ -116,6 +118,9 @@ export function noteReducer(state, action) {
 
     case ACTION.SET_CUSTOM_TAGS:
       return { ...state, customTags: action.payload };
+
+    case ACTION.SET_TAG_MAP:
+      return { ...state, tagMap: action.payload };
 
     default:
       return state;

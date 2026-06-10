@@ -39,6 +39,9 @@ export default function Dashboard() {
       .then((tags) => {
         const tagNames = (tags || []).map((t) => t.name);
         dispatch({ type: ACTION.SET_CUSTOM_TAGS, payload: tagNames });
+        const map = {};
+        (tags || []).forEach((t) => { map[t.name] = t.id; });
+        dispatch({ type: ACTION.SET_TAG_MAP, payload: map });
       })
       .catch(() => {});
   }, []);

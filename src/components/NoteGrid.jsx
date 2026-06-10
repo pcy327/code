@@ -7,7 +7,7 @@ import NoteCard from './NoteCard';
 import { Plus } from 'lucide-react';
 
 export default function NoteGrid() {
-  const { notes, searchKeyword, isLoading } = useNoteState();
+  const { notes, searchKeyword, isLoading, tagMap } = useNoteState();
   const dispatch = useNoteDispatch();
   const navigate = useNavigate();
 
@@ -32,7 +32,12 @@ export default function NoteGrid() {
 
   const handleNewNote = async () => {
     try {
-      const data = await createNote({ title: '未命名笔记', content: '', tagIds: [] });
+      // If currently filtering by a tag, auto-tag the new note
+      const tagIds = [];
+      if (searchKeyword && tagMap && tagMap[searchKeyword]) {
+        tagIds.push(tagMap[searchKeyword]);
+      }
+      const data = await createNote({ title: '未命名笔记', content: '', tagIds });
       const newNote = {
         id: String(data.id),
         title: data.title,
