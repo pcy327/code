@@ -46,14 +46,6 @@ function execCmd(editorRef, cmd, ...args) {
  * AI Stream — fetches SSE, accumulates tokens, returns full text
  * =================================================================== */
 
-/** Safely extract SSE data value, preserving whitespace */
-function extractData(line) {
-  // Strip "data:" prefix (5 chars); if followed by a space, strip that too
-  let val = line.slice(5);
-  if (val.startsWith(' ')) val = val.slice(1);
-  return val;
-}
-
 async function fetchAIStream(prompt, onToken) {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not logged in');
@@ -79,13 +71,22 @@ async function fetchAIStream(prompt, onToken) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (!line.startsWith('data:')) continue;
-      const data = extractData(line);
-      // Keep empty data lines (they represent intentional blank lines in markdown)
+
+      // Extract raw data — NO trim, NO fixMarkdown
+      const data = line.startsWith('data: ')
+        ? line.slice(6)   // "data: " → 6 chars
+        : line.slice(5);  // "data:"  → 5 chars
+
       const prevLine = i > 0 ? lines[i - 1] : '';
       if (prevLine.startsWith('event:error')) throw new Error(data);
       if (prevLine.startsWith('event:done')) {
         onToken(accumulated);
         return accumulated;
+      }
+
+      // Restore newlines: consecutive data: lines = multi-line content
+      if (prevLine.startsWith('data:')) {
+        accumulated += '\n';
       }
       accumulated += data;
       onToken(accumulated);
