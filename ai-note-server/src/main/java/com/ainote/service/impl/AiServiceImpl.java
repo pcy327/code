@@ -138,11 +138,23 @@ public class AiServiceImpl implements AiService {
                 .toList();
     }
 
+    private static final String SYSTEM_PROMPT = """
+            你是一个专业的AI助手，请使用Markdown格式回答用户的问题。
+            要求：
+            - 使用 #、##、### 等标题层级组织内容
+            - 代码必须放在 ``` ``` 代码块中，并标注语言
+            - 使用 - 或 1. 创建列表
+            - 使用 **粗体** 强调重点
+            - 使用 > 引用重要内容
+            - 适当使用表格对比信息
+            """;
+
     @Override
     public void streamChat(String prompt, StreamCallback callback) {
         try {
             Flux<String> flux = chatClientBuilder.build()
                     .prompt()
+                    .system(SYSTEM_PROMPT)
                     .user(prompt)
                     .stream()
                     .content();
