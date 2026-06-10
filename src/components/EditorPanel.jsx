@@ -45,13 +45,28 @@ function execCmd(editorRef, cmd, ...args) {
 /* ===================================================================
  * AI Stream — fetches SSE, accumulates tokens, returns full text
  * =================================================================== */
+/** Fix common Markdown formatting issues (missing spaces after markers) */
+function fixMarkdown(text) {
+  return text
+    // Fix headings: #text -> # text, ##text -> ## text, etc.
+    .replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
+    // Fix list markers: -text -> - text, *text -> * text
+    .replace(/^([-*])([^\s-*])/gm, '$1 $2')
+    // Fix ordered lists: 1.text -> 1. text
+    .replace(/^(\d+\.)([^\s\d])/gm, '$1 $2')
+    // Fix blockquote: >text -> > text
+    .replace(/^(>)([^\s>])/gm, '$1 $2');
+}
+
 async function fetchAIStream(prompt, onToken) {
   const token = localStorage.getItem('token');
-  if (!token) throw new Error('未登录');
+  if (!token) throw new Error('Not logged in');
 
   const resp = await fetch(`/api/ai/stream?prompt=${encodeURIComponent(prompt)}`, {
     headers: { 'Authorization': `Bearer ${token}` },
   });
+
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -72,12 +87,18 @@ async function fetchAIStream(prompt, onToken) {
       if (!data) continue;
       const prevLine = i > 0 ? lines[i - 1] : '';
       if (prevLine.startsWith('event:error')) throw new Error(data);
-      if (prevLine.startsWith('event:done')) return accumulated;
+      if (prevLine.startsWith('event:done')) {
+        // Apply Markdown formatting fix on final result
+        const fixed = fixMarkdown(accumulated);
+        onToken(fixed);
+        return fixed;
+      }
       accumulated += data;
       onToken(accumulated);
     }
   }
-  return accumulated;
+  const fixed = fixMarkdown(accumulated);
+  return fixed;
 }
 
 /* ===================================================================
