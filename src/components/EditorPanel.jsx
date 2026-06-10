@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { Editor, rootCtx } from '@milkdown/kit/core';
+import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core';
 import { nord } from '@milkdown/theme-nord';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import { history } from '@milkdown/plugin-history';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
+import '@milkdown/theme-nord/style.css';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
 import { generateSummary, suggestTags, optimizeMarkdown } from '../api/ai';
