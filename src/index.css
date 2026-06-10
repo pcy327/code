@@ -52,114 +52,72 @@
 }
 
 /* =============================================================
- * @uiw/react-md-editor — Single pane, clean writing mode
+ * @uiw/react-md-editor — Clean visual style only
  *
- * Editor fills full width, no preview split by default.
- * "显示预览" button toggles live preview when needed.
+ * Only override colors, fonts, borders. Do NOT touch layout
+ * (width/height/position) — let the library handle that.
  * ============================================================= */
 
 [data-color-mode="light"] .w-md-editor {
   --color-border: transparent !important;
+  --color-border-default: transparent !important;
   box-shadow: none !important;
   border: none !important;
   background: transparent !important;
-  display: flex;
-  flex-direction: column;
-  height: 100% !important;
 }
 
-/* Toolbar — visible, clean */
+/* Toolbar */
 .w-md-editor-toolbar {
   border: none !important;
   border-bottom: 1px solid #f1f5f9 !important;
   background: transparent !important;
-  padding: 4px 8px !important;
   height: auto !important;
   min-height: auto !important;
 }
 
-.w-md-editor-toolbar ul { gap: 2px !important; }
+.w-md-editor-toolbar ul { gap: 1px !important; }
 
 .w-md-editor-toolbar li > button {
-  color: #64748b !important;
+  color: #94a3b8 !important;
   border-radius: 6px !important;
   height: 32px !important;
   min-width: 32px !important;
-  padding: 4px !important;
 }
-
 .w-md-editor-toolbar li > button svg { width: 16px !important; height: 16px !important; }
-.w-md-editor-toolbar li > button:hover { background: #f1f5f9 !important; color: #334155 !important; }
+.w-md-editor-toolbar li > button:hover { background: #f1f5f9 !important; color: #475569 !important; }
 .w-md-editor-toolbar li > button.active { background: #eff6ff !important; color: #3b82f6 !important; }
 
-.w-md-editor-content {
-  background: transparent !important;
-  flex: 1 !important;
-  min-height: 0 !important;
-}
+.w-md-editor-content { background: transparent !important; }
+.w-md-editor-dragbar { display: none !important; }
 
-/* Source textarea — fill 100% width in edit mode */
-.w-md-editor-text {
-  width: 100% !important;
-  height: 100% !important;
-  background: transparent !important;
-}
-
+/* Source textarea — visual only */
 .w-md-editor-text-input {
-  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  font-family: 'Georgia', 'Noto Serif SC', serif !important;
   font-size: 17px !important;
   line-height: 1.85 !important;
   color: #1e293b !important;
   caret-color: #3b82f6 !important;
-  background: transparent !important;
-  padding: 0 48px 80px !important;
-  width: 100% !important;
 }
-
-.w-md-editor-text-pre {
-  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
-  font-size: 17px !important;
-  line-height: 1.85 !important;
-  background: transparent !important;
-  padding: 0 48px 80px !important;
-}
-
 .w-md-editor-text-pre > code {
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: #1e293b !important;
-  background: transparent !important;
-}
-
-/* Preview pane — when toggled */
-.w-md-editor-preview {
-  background: #fafbfc !important;
-  box-shadow: none !important;
-}
-
-.w-md-editor-input {
-  width: 50% !important;
-}
-
-.w-md-editor-dragbar {
-  display: none !important;
-}
-
-/* Preview typography */
-.wmde-markdown {
-  color: #334155 !important;
-  background: transparent !important;
+  font-family: 'Georgia', 'Noto Serif SC', serif !important;
   font-size: 17px !important;
   line-height: 1.85 !important;
-  padding: 0 48px 80px !important;
-  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
+  color: #1e293b !important;
 }
 
+/* Preview pane */
+.w-md-editor-preview { background: #fafbfc !important; box-shadow: none !important; }
+
+.wmde-markdown {
+  font-family: 'Georgia', 'Noto Serif SC', serif !important;
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  color: #334155 !important;
+}
 .wmde-markdown h1 { font-size: 2em !important; font-weight: 700 !important; color: #0f172a !important; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
 .wmde-markdown h2 { font-size: 1.5em !important; font-weight: 600 !important; color: #1e293b !important; }
 .wmde-markdown h3 { font-size: 1.2em !important; font-weight: 600 !important; color: #334155 !important; }
-.wmde-markdown code { background: #f1f5f9 !important; color: #e11d48 !important; padding: 2px 6px; border-radius: 4px; }
+.wmde-markdown code { background: #f1f5f9 !important; color: #e11d48 !important; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace !important; }
 .wmde-markdown pre { background: #1e293b !important; border-radius: 10px !important; padding: 20px 24px; }
 .wmde-markdown pre code { background: transparent !important; color: #e2e8f0 !important; }
 .wmde-markdown blockquote { border-left: 4px solid #94a3b8 !important; background: #f8fafc; padding: 12px 20px; border-radius: 0 8px 8px 0; }

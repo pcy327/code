@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import MDEditor, { commands } from '@uiw/react-md-editor';
+import MDEditor from '@uiw/react-md-editor';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
 import { generateSummary, suggestTags, optimizeMarkdown } from '../api/ai';
@@ -125,8 +125,6 @@ export default function EditorPanel({ onHeadingsChange }) {
           preview="live"
           height="100%"
           visibleDragbar={false}
-          commands={commands.getCommands()}
-          extraCommands={[]}
           className="!bg-transparent !border-none !shadow-none"
         />
 
