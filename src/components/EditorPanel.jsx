@@ -73,9 +73,13 @@ async function streamAIResponse(editorRef, onUpdate) {
   const token = localStorage.getItem('token');
   if (!token) return;
 
-  // Build accumulated content
+  // Get content before the // prompt (which we just deleted)
+  let beforeContent = editor.action(getMarkdown());
+  // Remove the trailing empty line we added
+  beforeContent = beforeContent.replace(/\n+$/, '');
+
   let accumulated = '';
-  const insertPos = view.state.selection.from;
+  let lastRender = 0;
 
   try {
     const response = await fetch(`/api/ai/stream?prompt=${encodeURIComponent(prompt)}`, {
@@ -91,41 +95,34 @@ async function streamAIResponse(editorRef, onUpdate) {
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      // Parse SSE events
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data:')) {
-          const data = line.slice(5).trim();
-          if (!data) continue;
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (!data) continue;
 
-          // Check what event type this belongs to
-          // (we parse the preceding event: line)
-          const prevLine = lines[lines.indexOf(line) - 1] || '';
-          if (prevLine.startsWith('event:error')) {
-            throw new Error(data);
-          }
-          if (prevLine.startsWith('event:done')) break;
+        const idx = lines.indexOf(line);
+        const prevLine = idx > 0 ? lines[idx - 1] : '';
+        if (prevLine.startsWith('event:error')) throw new Error(data);
+        if (prevLine.startsWith('event:done')) break;
 
-          // It's a token
-          accumulated += data;
+        accumulated += data;
 
-          // Insert/update in editor
-          const v = editor.ctx.get(editorViewCtx);
-          if (v) {
-            const s = v.state;
-            // Replace from insertPos to end of inserted content
-            const endPos = Math.max(insertPos, s.selection.from);
-            const t = s.tr;
-            t.replaceWith(insertPos, endPos, s.schema.text(accumulated));
-            v.dispatch(t);
-          }
+        // Throttle: re-render via replaceAll every 100ms so Markdown gets parsed
+        const now = Date.now();
+        if (now - lastRender > 100) {
+          lastRender = now;
+          editor.action(replaceAll((beforeContent ? beforeContent + '\n\n' : '') + accumulated));
         }
       }
     }
 
-    onUpdate(accumulated);
+    // Final render with proper Markdown parsing
+    const fullMd = (beforeContent ? beforeContent + '\n\n' : '') + accumulated;
+    editor.action(replaceAll(fullMd));
+    onUpdate(fullMd);
   } catch (err) {
     console.error('AI stream failed:', err);
   }
