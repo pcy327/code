@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNoteDispatch } from '../store/NoteContext';
 import { ACTION } from '../store/noteReducer';
+import { deleteNote } from '../api/notes';
+import { Trash2 } from 'lucide-react';
 
 const TAG_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -33,13 +36,26 @@ function formatDate(iso) {
 export default function NoteCard({ note }) {
   const navigate = useNavigate();
   const dispatch = useNoteDispatch();
+  const [deleting, setDeleting] = useState(false);
 
   const handleClick = () => {
     dispatch({ type: ACTION.SET_CURRENT_NOTE, payload: note });
     navigate(`/workspace/${note.id}`);
   };
 
-  /* 简易版摘要：取 content 前 120 字符，去除 Markdown 符号 */
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deleteNote(note.id);
+      dispatch({ type: ACTION.DELETE_NOTE, payload: note.id });
+    } catch (err) {
+      console.error('Failed to delete note', err);
+      setDeleting(false);
+    }
+  };
+
   const snippet = (note.summary ||
     note.content
       ?.replace(/[#*`~>\[\]()]/g, '')
@@ -53,19 +69,33 @@ export default function NoteCard({ note }) {
       onClick={handleClick}
       className="group bg-white rounded-xl border border-gray-200 p-5 cursor-pointer
                  hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5
-                 transition-all duration-200 flex flex-col animate-fadeIn"
+                 transition-all duration-200 flex flex-col animate-fadeIn relative"
     >
-      {/* 标题 */}
-      <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+      {/* Delete button — visible on hover */}
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="absolute top-3 right-3 p-1.5 rounded-lg
+                   opacity-0 group-hover:opacity-100
+                   text-gray-300 hover:text-red-500 hover:bg-red-50
+                   transition-all duration-200 cursor-pointer
+                   disabled:opacity-50"
+        title="删除笔记"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+
+      {/* Title */}
+      <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-8">
         {note.title || '未命名笔记'}
       </h3>
 
-      {/* 摘要 */}
+      {/* Summary */}
       <p className="text-sm text-gray-500 leading-relaxed mb-4 flex-1 line-clamp-3">
         {snippet}
       </p>
 
-      {/* 底部：标签 + 时间 */}
+      {/* Footer: tags + time */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
           {(note.tags || []).slice(0, 3).map((tag, i) => (
