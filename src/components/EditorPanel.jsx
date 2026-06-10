@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
-import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/kit/core';
+import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core';
 import { commonmark } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
@@ -8,7 +8,7 @@ import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { slashFactory, SlashProvider } from '@milkdown/plugin-slash';
 import { tooltipFactory, TooltipProvider } from '@milkdown/plugin-tooltip';
 import { nord } from '@milkdown/theme-nord';
-import { replaceAll, getMarkdown } from '@milkdown/kit/utils';
+import { replaceAll, getMarkdown, callCommand } from '@milkdown/kit/utils';
 import { toggleStrongCommand, toggleEmphasisCommand, toggleInlineCodeCommand, wrapInHeadingCommand, wrapInBulletListCommand, wrapInOrderedListCommand, wrapInBlockquoteCommand, insertHrCommand, createCodeBlockCommand } from '@milkdown/kit/preset/commonmark';
 import '@milkdown/theme-nord/style.css';
 import { useNoteState, useNoteDispatch } from '../store/NoteContext';
@@ -24,10 +24,7 @@ function execCmd(editorRef, cmd, ...args) {
   const editor = editorRef.current;
   if (!editor) return;
   try {
-    const view = editor.ctx.get(editorViewCtx);
-    if (!view) return;
-    const cmdObj = editor.ctx.get(cmd.key);
-    cmdObj.run(view.state, view.dispatch, view, ...args);
+    editor.action(callCommand(cmd.key, ...args));
   } catch (e) { console.error('Command failed:', e); }
 }
 
