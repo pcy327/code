@@ -23,7 +23,9 @@ export default function Sidebar() {
   const { notes, currentNote } = useNoteState();
   const dispatch = useNoteDispatch();
 
+  // Merge currentNote into the list so title/content updates show instantly
   const recentNotes = [...notes]
+    .map((n) => n.id === currentNote?.id ? { ...n, title: currentNote.title, content: currentNote.content } : n)
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 5);
 
