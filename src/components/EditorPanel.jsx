@@ -382,6 +382,15 @@ export default function EditorPanel({ onHeadingsChange }) {
             if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current);
             titleDebounceRef.current = setTimeout(() => { if (currentNote?.id) updateNote(currentNote.id, { title: t }).catch(() => { }); }, 800);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.target.blur();
+              setTimeout(() => {
+                document.querySelector('.milkdown .ProseMirror')?.focus();
+              }, 50);
+            }
+          }}
           placeholder="Untitled"
           className="w-full text-4xl font-extrabold text-gray-900 placeholder:text-gray-200 bg-transparent border-none outline-none focus:ring-0 tracking-tight leading-tight"
           style={{ fontFamily: "'Georgia', 'Noto Serif SC', serif" }}
