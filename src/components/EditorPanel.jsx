@@ -341,13 +341,14 @@ export default function EditorPanel({ onHeadingsChange }) {
     }
   }, []);
 
-  /* Insert AI response into Milkdown editor via content state change */
+  /* Insert AI response as styled blockquote bubble */
   const handleInsertAI = useCallback(() => {
     if (!aiState?.content) return;
-    const sep = '\n\n---\n**🤖 AI 回答**\n\n';
-    const newContent = localContent + sep + aiState.content;
+    // Wrap in blockquote for visual bubble effect
+    const lines = aiState.content.split('\n');
+    const bubble = '> **🤖 AI 回答**\n>\n' + lines.map(l => l ? '> ' + l : '>').join('\n');
+    const newContent = localContent + '\n\n' + bubble;
     setAiState(null);
-    // syncContent updates localContent state → MilkdownEditor useEffect picks it up → replaceAll fires
     syncContent(newContent);
   }, [aiState, localContent, syncContent]);
 
