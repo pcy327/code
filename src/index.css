@@ -63,7 +63,7 @@
 
 .milkdown .editor {
   font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif !important;
-  font-size: 17px !important;
+  font-size: 18px !important;
   line-height: 1.85 !important;
   color: #1e293b !important;
   outline: none !important;
@@ -78,6 +78,8 @@
 .milkdown .ProseMirror {
   outline: none !important;
   min-height: 60vh;
+  font-size: 18px;
+  line-height: 1.85;
 }
 
 .milkdown .ProseMirror p { margin-bottom: 0.8em; }
