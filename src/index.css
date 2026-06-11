@@ -55,9 +55,10 @@
  * Milkdown WYSIWYG Editor — single pane, white, centered
  * ============================================================= */
 
-/* Milkdown editor area */
+/* Milkdown editor area — wider, centered, visible caret */
 .milkdown {
   min-height: 60vh;
+  width: 100%;
 }
 
 .milkdown .editor {
@@ -65,9 +66,13 @@
   font-size: 17px !important;
   line-height: 1.85 !important;
   color: #1e293b !important;
-  caret-color: #3b82f6 !important;
   outline: none !important;
   padding: 8px 0 120px;
+}
+
+/* Bold visible cursor */
+.milkdown .ProseMirror {
+  caret-color: #2563eb !important;
 }
 
 .milkdown .ProseMirror {

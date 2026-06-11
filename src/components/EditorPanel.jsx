@@ -370,7 +370,7 @@ export default function EditorPanel({ onHeadingsChange }) {
   return (
     <div className="flex-1 flex flex-col bg-white h-full overflow-hidden">
       {/* Title */}
-      <div className="shrink-0" style={{ padding: '24px 48px 8px' }}>
+      <div className="shrink-0" style={{ padding: '24px 24px 8px' }}>
         <input type="text" value={currentNote.title || ''}
           onChange={(e) => {
             const t = e.target.value;
@@ -385,8 +385,8 @@ export default function EditorPanel({ onHeadingsChange }) {
       </div>
 
       {/* Editor + AI bubble */}
-      <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '0 48px 120px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '0 24px 120px' }}>
+        <div style={{ width: '80%', margin: '0 auto' }}>
           <MilkdownProvider>
             <MilkdownEditor key={currentId} initialContent={localContent}
               onMarkdownChange={handleMarkdownChange} onTriggerAI={handleTriggerAI} />
@@ -395,7 +395,7 @@ export default function EditorPanel({ onHeadingsChange }) {
 
         {/* AI bubble card */}
         {aiState && (
-          <div style={{ maxWidth: 800, margin: '24px auto 0' }}>
+          <div style={{ width: '80%', margin: '24px auto 0' }}>
             <AiBubble
               content={aiState.content}
               streaming={aiState.streaming}
