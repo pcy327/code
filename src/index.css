@@ -82,7 +82,7 @@
   line-height: 1.85 !important;
 }
 
-.milkdown .ProseMirror p { margin-bottom: 0.8em; }
+.milkdown .ProseMirror p { margin-bottom: 0.8em; font-size: 22px !important; }
 .milkdown .ProseMirror h1 { font-size: 2em; font-weight: 700; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; margin: 1.5em 0 0.6em; }
 .milkdown .ProseMirror h2 { font-size: 1.5em; font-weight: 600; color: #1e293b; margin: 1.4em 0 0.5em; }
 .milkdown .ProseMirror h3 { font-size: 1.2em; font-weight: 600; color: #334155; margin: 1.2em 0 0.4em; }
@@ -101,7 +101,8 @@
   margin: 1em 0;
 }
 .milkdown .ProseMirror ul, .milkdown .ProseMirror ol { padding-left: 1.5em; }
-.milkdown .ProseMirror li { margin-bottom: 0.3em; }
+.milkdown .ProseMirror li { margin-bottom: 0.3em; font-size: 22px !important; }
+.milkdown .ProseMirror td, .milkdown .ProseMirror th { font-size: 22px !important; }
 .milkdown .ProseMirror hr { border: none; border-top: 1px solid #e2e8f0; margin: 2em 0; }
 .milkdown .ProseMirror img { max-width: 100%; border-radius: 8px; }
 .milkdown .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1em 0; }
