@@ -278,13 +278,14 @@ export default function EditorPanel({ onHeadingsChange }) {
   const [aiState, setAiState] = useState(null); // { content, streaming }
 
   useEffect(() => {
-    if (currentNote?.id !== currentId) {
+    // Sync when note ID changes OR content gets loaded from API (same ID, new content)
+    if (currentNote?.id !== currentId || (currentNote?.content && currentNote.content !== lastSavedRef.current)) {
       setCurrentId(currentNote?.id);
       setLocalContent(currentNote?.content || '');
       lastSavedRef.current = currentNote?.content || '';
       setAiState(null);
     }
-  }, [currentNote?.id]);
+  }, [currentNote?.id, currentNote?.content]);
 
   const syncContent = useCallback((md) => {
     setLocalContent(md);
