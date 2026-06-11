@@ -70,9 +70,17 @@
   padding: 8px 0 120px;
 }
 
-/* Bold visible cursor */
+/* Bold visible cursor — bright blue, block shape */
 .milkdown .ProseMirror {
-  caret-color: #2563eb !important;
+  caret-color: #1d4ed8 !important;
+  caret-shape: block;
+}
+
+.milkdown .ProseMirror:focus {
+  caret-color: #1d4ed8 !important;
+  caret-shape: block;
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.08);
+  border-radius: 4px;
 }
 
 .milkdown .ProseMirror {
