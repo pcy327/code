@@ -325,9 +325,12 @@ export default function EditorPanel({ onHeadingsChange }) {
     const prompt = match[1].trim();
     if (!prompt) return;
 
-    // Delete the // prompt line
+    // Delete only the // prefix, keep the user's question
     const triggerStart = lineStart + lineText.indexOf('//');
-    view.dispatch(state.tr.delete(triggerStart, $from.pos));
+    const slashEnd = triggerStart + 2; // "//" is 2 chars
+    // Also remove a trailing space after // if present
+    const spaceAfter = state.doc.textBetween(slashEnd, slashEnd + 1) === ' ' ? 1 : 0;
+    view.dispatch(state.tr.delete(triggerStart, slashEnd + spaceAfter));
 
     setAiState({ content: '', streaming: true });
 
