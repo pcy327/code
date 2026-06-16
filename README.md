@@ -8,6 +8,9 @@
 ![Tech Stack](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss)
 ![Tech Stack](https://img.shields.io/badge/DeepSeek-4F46E5?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MSAwLTgtMy41OS04LThzMy41OS04IDgtOCA4IDMuNTkgOCA4LTMuNTkgOC04IDh6IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==)
 
+
+[![B站演示](封面图片地址)]([https://www.bilibili.com/video/BVxxxx/](https://www.bilibili.com/video/BV1R4jT6REhf/?vd_source=7e728ca6d8b380045f2c0c1b8fa5431e#reply116757427652762)
+
 ---
 
 ## 📋 目录
