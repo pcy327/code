@@ -13,6 +13,7 @@ public class NoteListResponse {
     private List<TagInfo> tags;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
 
     @Data
     public static class TagInfo {

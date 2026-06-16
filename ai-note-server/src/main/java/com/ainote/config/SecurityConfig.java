@@ -37,6 +37,7 @@ public class SecurityConfig {
             .securityContext(sc -> sc.requireExplicitSave(false))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/shares/public/**").permitAll()
                 .requestMatchers("/doc.html", "/v3/api-docs/**", "/webjars/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()

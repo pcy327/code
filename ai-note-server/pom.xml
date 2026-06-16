@@ -79,6 +79,20 @@
             <version>${spring-ai.version}</version>
         </dependency>
 
+        <!-- Alibaba Cloud OSS -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+            <version>3.17.4</version>
+        </dependency>
+
+        <!-- Markdown → HTML -->
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
         <!-- Knife4j API 文档 -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>

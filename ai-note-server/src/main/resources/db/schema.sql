@@ -46,3 +46,21 @@ CREATE INDEX IF NOT EXISTS idx_note_tag_tag_id ON note_tag(tag_id);
 CREATE INDEX IF NOT EXISTS idx_note_search ON note USING GIN (
     to_tsvector('simple', COALESCE(title, '') || ' ' || COALESCE(content, ''))
 );
+
+-- Share links
+CREATE TABLE IF NOT EXISTS shared_note (
+    id BIGSERIAL PRIMARY KEY,
+    note_id BIGINT NOT NULL REFERENCES note(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES "user"(id),
+    token VARCHAR(32) NOT NULL UNIQUE,
+    password_hash VARCHAR(255),
+    expires_at TIMESTAMP,
+    is_revoked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_note_token ON shared_note(token);
+CREATE INDEX IF NOT EXISTS idx_shared_note_user_id ON shared_note(user_id);
+
+-- Add deleted_at column for recycle bin (safe for existing databases)
+ALTER TABLE note ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;

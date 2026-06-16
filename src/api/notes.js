@@ -19,3 +19,15 @@ export function updateNote(id, data) {
 export function deleteNote(id) {
   return client.delete(`/notes/${id}`);
 }
+
+export function listTrashNotes() {
+  return client.get('/notes/trash');
+}
+
+export function restoreNote(id) {
+  return client.put(`/notes/${id}/restore`);
+}
+
+export function permanentlyDeleteNote(id) {
+  return client.delete(`/notes/${id}/hard`);
+}

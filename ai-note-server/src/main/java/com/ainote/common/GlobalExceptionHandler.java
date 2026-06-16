@@ -1,5 +1,6 @@
 package com.ainote.common;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,10 +40,17 @@ public class GlobalExceptionHandler {
                 .body(Result.error(403, "无权访问"));
     }
 
+    /** Database errors — never leak stack/query details to client */
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<Result<Void>> handleDataAccess(DataAccessException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Result.error(500, "数据库连接失败，请稍后重试"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Result<Void>> handleRuntime(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error(500, ex.getMessage()));
+                .body(Result.error(500, "服务器内部错误"));
     }
 
     @ExceptionHandler(Exception.class)

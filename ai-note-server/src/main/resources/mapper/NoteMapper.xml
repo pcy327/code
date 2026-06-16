@@ -21,4 +21,23 @@
         ORDER BY n.updated_at DESC
     </select>
 
+    <select id="selectTrashNotes" resultType="com.ainote.entity.Note">
+        SELECT id, user_id, title, summary, is_deleted, deleted_at, created_at, updated_at
+        FROM note
+        WHERE user_id = #{userId}
+          AND is_deleted = TRUE
+        ORDER BY deleted_at DESC NULLS LAST, updated_at DESC
+    </select>
+
+    <update id="restoreNote">
+        UPDATE note
+        SET is_deleted = FALSE, deleted_at = NULL
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="permanentlyDelete">
+        DELETE FROM note
+        WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
 </mapper>

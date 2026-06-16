@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -113,7 +114,39 @@ public class NoteServiceImpl implements NoteService {
         if (note == null) {
             throw new IllegalArgumentException("笔记不存在");
         }
+        note.setDeletedAt(LocalDateTime.now());
+        noteMapper.updateById(note);
         noteMapper.deleteById(noteId);
+    }
+
+    @Override
+    public List<NoteListResponse> listTrashNotes(Long userId) {
+        List<Note> notes = noteMapper.selectTrashNotes(userId);
+        return notes.stream()
+                .map(note -> {
+                    NoteListResponse resp = toListResponse(note, getTagsForNote(note.getId()));
+                    resp.setDeletedAt(note.getDeletedAt());
+                    return resp;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void restoreNote(Long userId, Long noteId) {
+        int affected = noteMapper.restoreNote(noteId, userId);
+        if (affected == 0) {
+            throw new IllegalArgumentException("笔记不存在或不在回收站中");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void permanentlyDeleteNote(Long userId, Long noteId) {
+        int affected = noteMapper.permanentlyDelete(noteId, userId);
+        if (affected == 0) {
+            throw new IllegalArgumentException("笔记不存在");
+        }
     }
 
     private List<NoteListResponse.TagInfo> getTagsForNote(Long noteId) {

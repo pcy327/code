@@ -59,9 +59,9 @@ export default function NoteGrid() {
     return (
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">
             {sectionTitle}
-            <span className="ml-2 text-gray-400 font-normal">(0)</span>
+            <span className="ml-2 text-gray-400 font-normal dark:text-slate-500">(0)</span>
           </h2>
           <button
             onClick={handleNewNote}
@@ -74,9 +74,9 @@ export default function NoteGrid() {
             新建
           </button>
         </div>
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-gray-400 dark:text-slate-500">
           <p className="text-5xl mb-4">📝</p>
-          <p className="text-lg font-medium">暂无笔记</p>
+          <p className="text-lg font-medium dark:text-slate-400">暂无笔记</p>
           <p className="text-sm mt-1">
             {searchKeyword ? '换个关键词试试？' : '点击上方按钮创建你的第一篇笔记吧'}
           </p>
@@ -88,9 +88,9 @@ export default function NoteGrid() {
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">
           {sectionTitle}
-          <span className="ml-2 text-gray-400 font-normal">({filteredNotes.length})</span>
+          <span className="ml-2 text-gray-400 font-normal dark:text-slate-500">({filteredNotes.length})</span>
         </h2>
         <button
           onClick={handleNewNote}

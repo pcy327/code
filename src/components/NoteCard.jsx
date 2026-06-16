@@ -69,9 +69,9 @@ export default function NoteCard({ note }) {
       onClick={handleClick}
       className="group bg-white rounded-xl border border-gray-200 p-5 cursor-pointer
                  hover:shadow-lg hover:border-blue-200 hover:-translate-y-0.5
-                 transition-all duration-200 flex flex-col animate-fadeIn relative"
+                 transition-all duration-200 flex flex-col animate-fadeIn relative
+                 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-700"
     >
-      {/* Delete button — visible on hover */}
       <button
         onClick={handleDelete}
         disabled={deleting}
@@ -79,35 +79,33 @@ export default function NoteCard({ note }) {
                    opacity-0 group-hover:opacity-100
                    text-gray-300 hover:text-red-500 hover:bg-red-50
                    transition-all duration-200 cursor-pointer
-                   disabled:opacity-50"
+                   disabled:opacity-50
+                   dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/30"
         title="删除笔记"
       >
         <Trash2 className="w-4 h-4" />
       </button>
 
-      {/* Title */}
-      <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-8">
+      <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-8 dark:text-slate-100 dark:group-hover:text-blue-400">
         {note.title || '未命名笔记'}
       </h3>
 
-      {/* Summary */}
-      <p className="text-sm text-gray-500 leading-relaxed mb-4 flex-1 line-clamp-3">
+      <p className="text-sm text-gray-500 leading-relaxed mb-4 flex-1 line-clamp-3 dark:text-slate-400">
         {snippet}
       </p>
 
-      {/* Footer: tags + time */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
           {(note.tags || []).slice(0, 3).map((tag, i) => (
             <span
               key={tag}
-              className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getTagColor(i)}`}
+              className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getTagColor(i)} dark:opacity-90`}
             >
               {tag}
             </span>
           ))}
         </div>
-        <time className="shrink-0 text-xs text-gray-400">
+        <time className="shrink-0 text-xs text-gray-400 dark:text-slate-500">
           {formatDate(note.updatedAt)}
         </time>
       </div>

@@ -5,24 +5,18 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("note")
-public class Note {
+@TableName("shared_note")
+public class SharedNote {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long noteId;
     private Long userId;
-    private String title;
-    private String content;
-    private String summary;
-
-    @TableLogic
-    private Boolean isDeleted;
-
-    private LocalDateTime deletedAt;
+    private String token;
+    private String passwordHash;
+    private LocalDateTime expiresAt;
+    private Boolean isRevoked;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
 }

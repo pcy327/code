@@ -153,6 +153,123 @@ public class AiServiceImpl implements AiService {
                                        注意：标题、列表符号、引用符号后必须添加一个空格；其余Markdown标记（粗体、行内代码、链接等）无需额外添加空格。
             """;
 
+    private static final String POLISH_SYSTEM = """
+            你是一个中文写作优化专家。请优化以下文本：
+            - 修正语病和错别字
+            - 优化表达，使语句更流畅自然
+            - 保持原意和风格不变
+            - 只返回优化后的文本，不要添加任何解释
+            """;
+
+    private static final String TRANSLATE_SYSTEM = """
+            请将以下文本翻译成英文。
+            - 保持专业术语的准确性
+            - 翻译自然流畅，符合英文表达习惯
+            - 只返回翻译结果，不要添加任何解释
+            """;
+
+    private static final String SIMPLIFY_SYSTEM = """
+            你是一个文字简化专家。请将以下文本简化：
+            - 用更简洁的词汇替换复杂表达
+            - 缩短长句，使内容更易理解
+            - 保留核心信息
+            - 只返回简化后的文本，不要添加任何解释
+            """;
+
+    private static final String EXPAND_SYSTEM = """
+            你是一个写作扩写专家。请将以下文本扩写：
+            - 在不改变原意的基础上增加细节和例证
+            - 使内容更丰富、更有说服力
+            - 保持原有风格和语气
+            - 只返回扩写后的文本，不要添加任何解释
+            """;
+
+    @Override
+    public String processText(String text, String action) {
+        if (text == null || text.isBlank()) return "";
+
+        String systemPrompt;
+        String userInstruction;
+
+        switch (action) {
+            case "translate" -> {
+                systemPrompt = TRANSLATE_SYSTEM;
+                userInstruction = "请翻译：\n" + text;
+            }
+            case "simplify" -> {
+                systemPrompt = SIMPLIFY_SYSTEM;
+                userInstruction = "请简化：\n" + text;
+            }
+            case "expand" -> {
+                systemPrompt = EXPAND_SYSTEM;
+                userInstruction = "请扩写：\n" + text;
+            }
+            default -> {
+                systemPrompt = POLISH_SYSTEM;
+                userInstruction = "请优化：\n" + text;
+            }
+        }
+
+        try {
+            String result = chatClientBuilder.build()
+                    .prompt()
+                    .system(systemPrompt)
+                    .user(userInstruction)
+                    .call()
+                    .content();
+            return result != null ? result.trim() : text;
+        } catch (Exception e) {
+            log.error("AI process failed for action: {}", action, e);
+            throw new RuntimeException("AI 处理失败，请稍后重试");
+        }
+    }
+
+    private static final String NOTE_CHAT_SYSTEM = """
+            你是一个笔记问答助手。用户会提供一篇笔记的内容，然后向你提问。
+            请根据笔记内容回答问题：
+            - 基于笔记内容给出准确、简洁的回答
+            - 如果问题无法从笔记内容中找到答案，如实说明笔记中没有相关信息
+            - 使用 Markdown 格式组织回答（标题、列表、代码块等）
+            - 引用笔记内容时使用引用格式 >
+            """;
+
+    private static final String COMPLETE_SYSTEM = """
+            你是一个写作助手。根据用户提供的上文，自然地进行续写。
+            要求：
+            - 只返回续写内容（几个词到一句话），不要解释、不要重复原文
+            - 保持与原内容相同的语言、语气和风格
+            - 如果是代码，保持正确的缩进和语法
+            - 在自然停顿处停止（句尾、行尾、代码块结束等）
+            """;
+
+    @Override
+    public void streamComplete(String context, StreamCallback callback) {
+        if (context == null || context.trim().isEmpty()) {
+            callback.onComplete("");
+            return;
+        }
+        try {
+            Flux<String> flux = chatClientBuilder.build()
+                    .prompt()
+                    .system(COMPLETE_SYSTEM)
+                    .user("请续写以下内容：\n" + context)
+                    .stream()
+                    .content();
+
+            StringBuilder full = new StringBuilder();
+            flux.doOnNext(token -> {
+                full.append(token);
+                callback.onToken(token);
+            }).doOnComplete(() -> {
+                callback.onComplete(full.toString());
+            }).doOnError(callback::onError)
+            .subscribe();
+        } catch (Exception e) {
+            log.error("AI complete failed", e);
+            callback.onError(e);
+        }
+    }
+
     @Override
     public void streamChat(String prompt, StreamCallback callback) {
         try {
@@ -173,6 +290,32 @@ public class AiServiceImpl implements AiService {
             .subscribe();
         } catch (Exception e) {
             log.error("AI stream failed", e);
+            callback.onError(e);
+        }
+    }
+
+    @Override
+    public void streamNoteChat(String noteContent, String question, StreamCallback callback) {
+        try {
+            String userPrompt = "笔记内容：\n" + noteContent + "\n\n---\n\n我的问题是：" + question;
+
+            Flux<String> flux = chatClientBuilder.build()
+                    .prompt()
+                    .system(NOTE_CHAT_SYSTEM)
+                    .user(userPrompt)
+                    .stream()
+                    .content();
+
+            StringBuilder full = new StringBuilder();
+            flux.doOnNext(token -> {
+                full.append(token);
+                callback.onToken(token);
+            }).doOnComplete(() -> {
+                callback.onComplete(full.toString());
+            }).doOnError(callback::onError)
+            .subscribe();
+        } catch (Exception e) {
+            log.error("AI note chat failed", e);
             callback.onError(e);
         }
     }

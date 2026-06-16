@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/notes")
 @RequiredArgsConstructor
@@ -52,6 +54,26 @@ public class NoteController {
     public Result<Void> delete(Authentication authentication, @PathVariable Long id) {
         Long userId = (Long) authentication.getPrincipal();
         noteService.deleteNote(userId, id);
+        return Result.success();
+    }
+
+    @GetMapping("/trash")
+    public Result<List<NoteListResponse>> trash(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return Result.success(noteService.listTrashNotes(userId));
+    }
+
+    @PutMapping("/{id}/restore")
+    public Result<Void> restore(Authentication authentication, @PathVariable Long id) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.restoreNote(userId, id);
+        return Result.success();
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public Result<Void> permanentDelete(Authentication authentication, @PathVariable Long id) {
+        Long userId = (Long) authentication.getPrincipal();
+        noteService.permanentlyDeleteNote(userId, id);
         return Result.success();
     }
 }
