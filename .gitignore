@@ -28,3 +28,6 @@ Thumbs.db
 # 日志
 *.log
 npm-debug.log*
+
+# 后端配置文件（含阿里云密钥等敏感信息）
+ai-note-server/src/main/resources/application.yml
