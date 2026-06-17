@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useNoteState, useNoteDispatch } from '../store/NoteContext';
-import { ACTION } from '../store/noteReducer';
+import { useShallow } from 'zustand/shallow';
+import { useNoteStore } from '../store/useNoteStore';
 import { updateNote, deleteNote, listNotes } from '../api/notes';
 import { listTags } from '../api/tags';
 import { ArrowLeft, RotateCcw, Trash2, Trash } from 'lucide-react';
@@ -22,8 +22,24 @@ function contentSnippet(content, maxLen = 60) {
 export default function Sidebar() {
   const navigate = useNavigate();
   const { noteId } = useParams();
-  const { notes, currentNote, tagMap } = useNoteState();
-  const dispatch = useNoteDispatch();
+
+  // ── useShallow 批量订阅 state，避免每字段单独 hook ──
+  const { notes, currentNote, tagMap } = useNoteStore(
+    useShallow((s) => ({ notes: s.notes, currentNote: s.currentNote, tagMap: s.tagMap })),
+  );
+
+  const { setNotes, setCurrentNote, setCustomTags, setTagMap, deleteNote, saveCurrentNote, resetDefaults } =
+    useNoteStore(
+      useShallow((s) => ({
+        setNotes: s.setNotes,
+        setCurrentNote: s.setCurrentNote,
+        setCustomTags: s.setCustomTags,
+        setTagMap: s.setTagMap,
+        deleteNote: s.deleteNote,
+        saveCurrentNote: s.saveCurrentNote,
+        resetDefaults: s.resetDefaults,
+      })),
+    );
 
   /* Lazy-load notes & tags when empty (covers direct refresh on Workspace) */
   useEffect(() => {
@@ -38,7 +54,7 @@ export default function Sidebar() {
             tags: (n.tags || []).map((t) => t.name),
             updatedAt: n.updatedAt,
           }));
-          dispatch({ type: ACTION.SET_NOTES, payload: mapped });
+          setNotes(mapped);
         })
         .catch((err) => console.error('Failed to load notes', err));
     }
@@ -49,10 +65,10 @@ export default function Sidebar() {
       listTags()
         .then((tags) => {
           const tagNames = (tags || []).map((t) => t.name);
-          dispatch({ type: ACTION.SET_CUSTOM_TAGS, payload: tagNames });
+          setCustomTags(tagNames);
           const map = {};
           (tags || []).forEach((t) => { map[t.name] = t.id; });
-          dispatch({ type: ACTION.SET_TAG_MAP, payload: map });
+          setTagMap(map);
         })
         .catch(() => {});
     }
@@ -62,7 +78,6 @@ export default function Sidebar() {
   let recentNotes = [...notes]
     .map((n) => n.id === currentNote?.id ? { ...n, title: currentNote.title, content: currentNote.content } : n);
 
-  // Include currentNote even when notes array is empty (e.g. direct refresh on Workspace)
   if (currentNote && !recentNotes.find((n) => n.id === currentNote.id)) {
     recentNotes = [currentNote, ...recentNotes];
   }
@@ -83,7 +98,7 @@ export default function Sidebar() {
       } catch (err) {
         console.error('Failed to save note', err);
       }
-      dispatch({ type: ACTION.SAVE_CURRENT_NOTE });
+      saveCurrentNote();
     }
     navigate('/');
   };
@@ -100,33 +115,24 @@ export default function Sidebar() {
       } catch (err) {
         console.error('Failed to save note', err);
       }
-      dispatch({ type: ACTION.SAVE_CURRENT_NOTE });
+      saveCurrentNote();
     }
     navigate(`/workspace/${note.id}`);
   };
 
-  const handleDelete = async (e, noteId) => {
+  const handleDelete = async (e, nid) => {
     e.stopPropagation();
     try {
-      await deleteNote(noteId);
-      dispatch({ type: ACTION.DELETE_NOTE, payload: noteId });
-      // If deleting the currently open note, navigate back
-      if (noteId === currentNote?.id) {
-        navigate('/');
-      }
+      await deleteNote(nid);
+      deleteNote(nid);
+      if (nid === currentNote?.id) navigate('/');
     } catch (err) {
       console.error('Failed to delete note', err);
     }
   };
 
-  const handleReset = () => {
-    dispatch({ type: ACTION.RESET_DEFAULTS });
-    navigate('/');
-  };
-
-  const handleTrash = () => {
-    navigate('/trash');
-  };
+  const handleReset = () => { resetDefaults(); navigate('/'); };
+  const handleTrash = () => navigate('/trash');
 
   return (
     <aside className="w-full h-full flex flex-col bg-white border-r border-gray-200 dark:bg-slate-800 dark:border-slate-700">
@@ -151,77 +157,43 @@ export default function Sidebar() {
             const isActive = note.id === noteId;
             const snippet = contentSnippet(note.content || note.summary);
             return (
-              <div
-                key={note.id}
+              <div key={note.id}
                 className={`group/item w-full text-left relative transition-all duration-150 cursor-pointer rounded-lg ${
-                  isActive
-                    ? 'bg-blue-50 dark:bg-blue-900/30'
-                    : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                  isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'
                 }`}
               >
-                <button
-                  onClick={() => handleSwitchNote(note)}
-                  className="w-full text-left block"
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-500 rounded-full" />
-                  )}
+                <button onClick={() => handleSwitchNote(note)} className="w-full text-left block">
+                  {isActive && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-blue-500 rounded-full" />}
                   <div className="pl-3 pr-8 py-2.5">
                     <p className={`text-sm leading-snug line-clamp-1 ${
-                      isActive
-                        ? 'font-semibold text-blue-700 dark:text-blue-400'
-                        : 'font-medium text-gray-800 dark:text-slate-200'
-                    }`}>
-                      {note.title || '未命名笔记'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 leading-relaxed dark:text-slate-500">
-                      {snippet}
-                    </p>
+                      isActive ? 'font-semibold text-blue-700 dark:text-blue-400' : 'font-medium text-gray-800 dark:text-slate-200'
+                    }`}>{note.title || '未命名笔记'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-1 leading-relaxed dark:text-slate-500">{snippet}</p>
                   </div>
                 </button>
-                <button
-                  onClick={(e) => handleDelete(e, note.id)}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded
-                             opacity-0 group-hover/item:opacity-100
-                             text-gray-300 hover:text-red-500 hover:bg-red-50
-                             transition-all duration-150 cursor-pointer
+                <button onClick={(e) => handleDelete(e, note.id)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover/item:opacity-100
+                             text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all duration-150 cursor-pointer
                              dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-900/30"
-                  title="删除笔记"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  title="删除笔记"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             );
           })}
         </div>
-        {recentNotes.length === 0 && (
-          <p className="text-xs text-gray-300 text-center py-8 dark:text-slate-600">暂无笔记</p>
-        )}
+        {recentNotes.length === 0 && <p className="text-xs text-gray-300 text-center py-8 dark:text-slate-600">暂无笔记</p>}
       </div>
 
       <div className="p-3 border-t border-gray-100 dark:border-slate-700 space-y-1">
-        <button
-          onClick={handleTrash}
-          className="w-full inline-flex items-center gap-1.5 px-3 py-1.5
-                     text-xs font-medium text-orange-500 hover:text-orange-700 hover:bg-orange-50
-                     rounded-lg transition-colors cursor-pointer
+        <button onClick={handleTrash}
+          className="w-full inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-500
+                     hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors cursor-pointer
                      dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/30"
-          title="回收站"
-        >
-          <Trash className="w-3 h-3" />
-          回收站
-        </button>
-        <button
-          onClick={handleReset}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-                     text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50
-                     rounded-lg transition-colors cursor-pointer
+          title="回收站"><Trash className="w-3 h-3" />回收站</button>
+        <button onClick={handleReset}
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-gray-400
+                     hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer
                      dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-700"
-          title="清除所有数据并恢复默认笔记"
-        >
-          <RotateCcw className="w-3 h-3" />
-          重置示例数据
-        </button>
+          title="清除所有数据并恢复默认笔记"><RotateCcw className="w-3 h-3" />重置示例数据</button>
       </div>
     </aside>
   );

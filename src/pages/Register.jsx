@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../store/AuthContext';
+import { useAuthStore } from '../store/useAuthStore';
 import { FileText } from 'lucide-react';
 
 export default function Register() {
@@ -9,7 +9,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -89,7 +89,7 @@ export default function Register() {
           </button>
           <p className="text-center text-sm text-gray-400 dark:text-slate-400">
             已有账户？{' '}
-            <Link to="/login" className="text-blue-500 hover:text-blue-600">注册</Link>
+            <Link to="/login" className="text-blue-500 hover:text-blue-600">登录</Link>
           </p>
         </form>
       </div>
